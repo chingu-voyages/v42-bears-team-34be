@@ -1,48 +1,32 @@
-import express from 'express';
-import cors from 'cors';
+import dotenv from 'dotenv'
+import express from 'express'
+import cors from 'cors'
+
+// environment variables
+dotenv.config()
+
+
+// import our components
+import authentication from './components/authentication/authentication.js'
+import plaid from "./components/plaid/plaid.js"
 
 const
     app = express()
 
+// register all our middlewares
+
+// for now this will use cors
 app.use(cors())
 
-import { Configuration, PlaidApi, Products, PlaidEnvironments } from 'plaid';
+// we will also need bodyparser, JWT and some type of rate limiting.
 
-// Leaving this here because I'm not a paying user anyway
-// Will eventually replace it with .env variables.
-const PLAID_CLIENT_ID = "63b6174c898b950012ffbe4b"
-const PLAID_SECRET = "06a72b7e1af069d9933fe6341f2812"
-const PLAID_ENV = 'sandbox';
+// tell our components to register all their routes
+authentication(app)
+plaid         (app)
 
-// We need a Plaid client.
-
-const configuration = new Configuration({
-    basePath: PlaidEnvironments[PLAID_ENV],
-    baseOptions: {
-      headers: {
-        'PLAID-CLIENT-ID': PLAID_CLIENT_ID,
-        'PLAID-SECRET': PLAID_SECRET,
-        'Plaid-Version': '2020-09-14',
-      },
-    },
-  });
-  
-const client = new PlaidApi(configuration);
-
-app.get('/api/get_token', async (req,res)=>{
-    const configs = {
-        user:{
-            client_user_id: 'user-id'
-        },
-        client_name: 'Plaid QUickstart',
-        products: ['liabilities'],
-        country_codes: ['US'],
-        language: 'en',
-        // redirect_uri : "http://localhost:3000"
-    }
-    const createTokenResponse = await client.linkTokenCreate(configs)
-    res.json(createTokenResponse.data)
-})
-  
-
+// hardcoded 3000.
+// replace with env.
 app.listen("3000")
+
+console.log("Listening on port 3000")
+

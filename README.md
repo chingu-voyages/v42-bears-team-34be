@@ -1,20 +1,43 @@
-# voyage-tasks
+# Environment variables
 
-Your project's `readme` is as important to success as your code. For 
-this reason you should put as much care into its creation and maintenance
-as you would any other component of the application.
+Create a .env file in the root of the project and populate it with:
 
-If you are unsure of what should go into the `readme` let this article,
-written by an experienced Chingu, be your starting point - 
-[Keys to a well written README](https://tinyurl.com/yk3wubft).
+```
+PLAID_CLIENT_ID=(your plaid client id)
+PLAID_SECRET=(your plaid secret)
+PLAID_ENV=(either sandbox or production)
+```
 
-And before we go there's "one more thing"! Once you decide what to include
-in your `readme` feel free to replace the text we've provided here.
+I think this can be done automatically?
 
-> Own it & Make it your Own!
+# Standards
+
+## Response
+
+Backend will respond only with objects encoded in JSON.
+
+It will accept only data encoded as ``application/x-www-form-urlencoded`` .
+
+
+```
+{
+    err : "error message",
+    field : "data according to what is specified by the component"
+}
+```
+
+Where "field" is also specified by the component, so the Authentication component, for example, returns an object with a "token" field.
+
 
 ## Endpoints
 
-``/api/get_token``
+- Backend endpoints should be prefixed with ``/api/``.
 
-Obtain a token from the Plaid API so that you can show that little widget or something.
+- When implementing a new endpoint, the preferred format should be:
+
+```
+/api/{component name}/action/:parameter
+```
+
+
+
