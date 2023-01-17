@@ -1,13 +1,23 @@
-
+import mongoose from 'mongoose'
 
 const db = {
     initialize(){
+        const
+            user = process.env.MONGO_USER,
+            pass = process.env.MONGO_PASS,
+            base = process.env.MONGO_BASE,
+            db   = process.env.MONGO_DBNAME
+        const
+            mongoUri = `mongodb+srv://${user}:${pass}@${base}/?retryWrites=true&w=majority`
+
+        mongoose.set('strictQuery', false);
+
         console.log("DB is initialized here")
+
+        mongoose.connect(mongoUri).then( ()=>{
+            console.log("Connected to mongo database")
+        })
     }
 }
-
-// due to the way NodeJS works, this will be called only once, even if this file
-// is included in multiple places.
-db.initialize()
 
 export default db

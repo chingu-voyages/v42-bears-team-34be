@@ -36,7 +36,7 @@ async function getToken(req,res){
 
 
 export default function(app){
-    app.get('/api/plaid/get_token', getToken)
+    app.get('/plaid/get_token', getToken)
 
     console.log("Plaid component registered.")
 }

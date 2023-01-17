@@ -1,17 +1,35 @@
 import "../../services/emailer.js"
+import User from "../../schemas/user.js"
 
 // create account
-function postCreateAccount(req,res){
-    res.status(201).json({
-        msg : "Your account has been created, but it's pending activation."
-    })
+async function postSignUp(req,res){
+    try{
+        const newUser = new User({
+            firstName : req.body.firstName,
+            lastName  : req.body.lastName,
+            email     : req.body.email,
+            password  : req.body.password
+        })
+
+        await newUser.validateSync()
+        await newUser.save()
+
+        res.status(201).json({
+            msg : "Your account has been created, but it's pending activation. (not really, just login)"
+        })
+    }catch(e){
+        res.status(400).json({
+            err : "You did something wrong: " + e
+        })
+    }
 }
 
 // login
 function postLogin(req,res){
     /*
         - get e-mail and password from request
-        - check hashed password against hashed password in database
+        - check hashed password against hashed password in database (for now it's just plain text)
+        - use bcrypt to encode / decode it
         - if it's ok, send a token
     */
     res.status(200).json({
@@ -46,6 +64,7 @@ function postForgotPassword(req,res){
 }
 
 export default function(app){
+    app.post("/auth/signup"         , postSignUp)
     app.post("/auth/login"          , postLogin)
     app.get ("/auth/verify/:tok"    , getVerify)
     app.post("/auth/forgotpassword/", postForgotPassword)
