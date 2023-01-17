@@ -36,13 +36,24 @@ app.use(jwt({
     credentialsRequired: false
 }))
 
-
-
 // tell our components to register all their routes
 authentication(app)
 plaid         (app)
 
-// build the indices for the shcmeas
+
+// if the frontend receives a 401 status, it should clear the
+// token from localStorage
+app.use( (err,req,res, next) =>{
+    if (err.name === "UnauthorizedError"){
+        res.status(401).json({
+            err : "Invalid authentication"
+        })
+    }else{
+        res.status(500).json({
+            err : err
+        })
+    }
+})
  
 
 const port = process.env.LOANAPP_PORT
