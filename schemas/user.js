@@ -49,9 +49,14 @@ const UserSchema = new mongoose.Schema({
     //activation: String,    // should be indexed by this, not used at the moment
     active    : Boolean,   // if this account is active or not
 
-    // lets us use createdAt and updatedAt
-    timestamps: true
-})
+    
+    },
+    // this is actually the  second argument, not a field
+    {
+        // lets us use createdAt and updatedAt
+        timestamps: true
+    }
+)
 
 const User = mongoose.model('User',UserSchema)
 
