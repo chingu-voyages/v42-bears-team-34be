@@ -12,7 +12,7 @@ const UserSchema = new mongoose.Schema({
         type: String, required: true
     },
     dateOfBirth:{
-        type : Date, required: true
+        type : Date, required: true 
     },
     email     : {
         type : String, required: true, 
@@ -33,12 +33,24 @@ const UserSchema = new mongoose.Schema({
         province          : {type : String}
     },
 
+    // not the same thing as a timestamp
+    dateSignedUp : {
+        type : Date, required: true
+    },
+
     // Plaid needs one access token for each individual client
     // each individual client has its own plaid item id
-    plaidItemId      : String,
-    plaidAccessToken : String,
+    // the backend can query the Plaid API on its own with no input from the user
+    // at a later date...
 
-    activation: String    // should be indexed by this
+    plaidItemId      : {type: String, index: true},
+    plaidAccessToken : {type: String, index: true},
+
+    //activation: String,    // should be indexed by this, not used at the moment
+    active    : Boolean,   // if this account is active or not
+
+    // lets us use createdAt and updatedAt
+    timestamps: true
 })
 
 const User = mongoose.model('User',UserSchema)

@@ -1,10 +1,9 @@
 // libraries
-import dayjs from 'dayjs';
 import bcrypt from 'bcrypt';
-import { body , validationResult} from 'express-validator';
 import jwt from 'jsonwebtoken';
 
-
+// validator
+import { userProfileValidator, loginCredentialsValidator } from './validators.js';
 
 // schemas
 import User from "../../schemas/user.js"
@@ -13,6 +12,7 @@ import User from "../../schemas/user.js"
 import "../../services/emailer.js"
 
 // create account
+// this should schedule an "activate your account" email.
 async function postSignUp(req,res){
     try{
         const hashedPassword = await bcrypt.hash(req.body.password,10);
@@ -22,9 +22,10 @@ async function postSignUp(req,res){
             lastName        : req.body.lastName,
             email           : req.body.email,
             hashedPassword  : hashedPassword,
-            dateOfBirth     : new Date(req.body.dateOfBirth)
+            dateOfBirth     : new Date(req.body.dateOfBirth),
+            dateSignedUp    : new Date(Date.now()),
+            active          : true  // make this one false when email integration is functional 
         })
-
         newUser.validateSync()
         await newUser.save()
         res.status(201).json({
@@ -33,10 +34,9 @@ async function postSignUp(req,res){
     }catch(e){
         console.error(e.error)
         res.status(500).json({
-            msg : "Something went wrong"
+            msg : "Something went wrong: "+ e.message
         })
     }
- 
 }
 
 // login
@@ -78,6 +78,7 @@ async function postLogin(req,res){
                 expiresIn: process.env.LOANAPP_JWT_DURATION
             }
         )
+
         // send it back
         res.status(200).json({
             tok : token
@@ -93,6 +94,11 @@ async function postLogin(req,res){
 // if the token is within the expiraiton period,
 // returns a fresh one.
 function postRefresh(req,res){
+    // What should this actually do?
+    // A valid token for a deleted user profile can lead to
+    // undefined behavior
+    // should we make a DB query to see if the user is still active?
+
     res.json({
         msg : "Ok."
     })
@@ -102,6 +108,7 @@ function postRefresh(req,res){
 function getProfile(req,res){
     // middleware should have placed the 
     // token inside the Authorization header before the request gets here.
+    // if it's expired, it will return a object with a single "expired = true" field.
     res.json( req.auth )
 }
 
@@ -133,35 +140,8 @@ function postForgotPassword(req,res){
     })
 }
 
-const validationGuard = (req,res, next) =>{
-    const errors = validationResult(req)
-    if(!errors.isEmpty())
-        return res.status(400).json({err : errors.array()})
-    next()
-}
-
-const userProfileValidator = [
-    body('email').isEmail(),
-    body('firstName').exists().trim().escape(),
-    body('lastName').exists().trim().escape(),
-    body('password').exists(),
-    body('dateOfBirth').exists().custom(
-        date =>{
-            const dateObject = dayjs(date)
-            return dayjs(dateObject, "MM-DD-YYYY", true).isValid()
-        }
-    ),
-    validationGuard
-]
-
-const loginCredentialsValidator = [
-    body('email').exists().isEmail(),
-    body('password').exists(),
-    validationGuard
-]
-
 export default function(app){
-    app.post("/auth/signup"         , userProfileValidator, postSignUp)
+    app.post("/auth/signup"         , userProfileValidator     , postSignUp)
     app.post("/auth/login"          , loginCredentialsValidator, postLogin)
     app.post("/auth/refresh"        , postRefresh)
     app.get ("/auth/profile"        , getProfile)

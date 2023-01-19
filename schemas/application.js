@@ -18,7 +18,14 @@ const ApplicationSchema = new mongoose.Schema({
     paymentAmount : {
         type: Number, required: true
     },
+    status : String,
+    
     requestedBy: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
+    evaluatedBy: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
+
+    createdAt  : Date,
+    updatedAt  : Date,
+
 })
 
 const Application = mongoose.model('Application',ApplicationSchema)
