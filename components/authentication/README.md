@@ -9,10 +9,11 @@ This is the component for user signup/signin.
 POST /auth/signup
 
 x-www-form-urlencoded body:
+    email
     firstName
     lastName
-    email
     password
+    dateOfBirth (MM-DD-YYYY)
 
 Success:
 {
