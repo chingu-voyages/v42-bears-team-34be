@@ -20,10 +20,13 @@
   },
   "homepage": "https://github.com/chingu-voyages/v42-bears-team-34be#readme",
   "dependencies": {
+    "bcrypt": "^5.1.0",
     "cors": "^2.8.5",
+    "dayjs": "^1.11.7",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "express-jwt": "^8.3.0",
+    "express-validator": "^6.14.2",
     "mongoose": "^6.8.3",
     "plaid": "^12.2.0"
   }

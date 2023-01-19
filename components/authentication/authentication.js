@@ -1,23 +1,42 @@
-import "../../services/emailer.js"
+// libraries
+import dayjs from 'dayjs';
+import bcrypt from 'bcrypt';
+import { body , validationResult} from 'express-validator';
+import jwt from 'jsonwebtoken';
+
+
+
+// schemas
 import User from "../../schemas/user.js"
 
-import jwt from 'jsonwebtoken';
+// services
+import "../../services/emailer.js"
 
 // create account
 async function postSignUp(req,res){
-    const newUser = new User({
-        firstName : req.body.firstName,
-        lastName  : req.body.lastName,
-        email     : req.body.email,
-        password  : req.body.password
-    })
+    try{
+        const hashedPassword = await bcrypt.hash(req.body.password,10);
+        const newUser = new User({
+            role            : 'user',
+            firstName       : req.body.firstName,
+            lastName        : req.body.lastName,
+            email           : req.body.email,
+            hashedPassword  : hashedPassword,
+            dateOfBirth     : new Date(req.body.dateOfBirth)
+        })
 
-    await newUser.validateSync()
-    await newUser.save()
-
-    res.status(201).json({
-        msg : "Your account has been created, but it's pending activation. (not really, just login)"
-    })
+        newUser.validateSync()
+        await newUser.save()
+        res.status(201).json({
+            msg : "Your account has been created, but it's pending activation. (not really, just login)"
+        })
+    }catch(e){
+        console.error(e.error)
+        res.status(500).json({
+            msg : "Something went wrong"
+        })
+    }
+ 
 }
 
 // login
@@ -28,31 +47,46 @@ async function postLogin(req,res){
         - use bcrypt to encode / decode it
         - if it's ok, send a token
     */
+    try{
+        const user = await User.findOne({
+            email    : req.body.email
+        }).exec()
+    
+        // user can be null.
+        if (!user)
+            throw new Error("User not found or password is incorrect.")
 
-    const user = await User.findOne({
-        email    : req.body.email,
-        password : req.body.password 
-    }).exec()
+        // compare hashedPassword with the provided password
+        let result = await bcrypt.compare(req.body.password, user.hashedPassword)
 
-    // user can be null.
-    if(!user){
-        throw "Either a user with that e-mail was not found or the password is wrong."
+        if(!result)
+            throw new Error("User not found or password is incorrect.")
+    
+        let { _id, firstName, lastName, email, role } = user
+    
+        // make a JWT
+        let token = jwt.sign(
+            {
+                id : _id,
+                firstName,
+                lastName,
+                email,
+                role
+            }, 
+            process.env.LOANAPP_JWT_SECRET,
+            {
+                expiresIn: process.env.LOANAPP_JWT_DURATION
+            }
+        )
+        // send it back
+        res.status(200).json({
+            tok : token
+        })
+    }catch(e){
+        res.status(500).json({
+            err : e.message
+        })
     }
-
-    let { _id, firstName, lastName, email } = user
-
-    // make a JWT
-    let token = jwt.sign({
-        id : _id,
-        firstName : firstName,
-        lastName  : lastName,
-        email     : email
-    }, process.env.LOANAPP_JWT_SECRET)
-
-    // send it back
-    res.status(200).json({
-        tok : token
-    })
 }
 
 // jwt refresh
@@ -99,11 +133,36 @@ function postForgotPassword(req,res){
     })
 }
 
+const validationGuard = (req,res, next) =>{
+    const errors = validationResult(req)
+    if(!errors.isEmpty())
+        return res.status(400).json({err : errors.array()})
+    next()
+}
 
+const userProfileValidator = [
+    body('email').isEmail(),
+    body('firstName').exists().trim().escape(),
+    body('lastName').exists().trim().escape(),
+    body('password').exists(),
+    body('dateOfBirth').exists().custom(
+        date =>{
+            const dateObject = dayjs(date)
+            return dayjs(dateObject, "MM-DD-YYYY", true).isValid()
+        }
+    ),
+    validationGuard
+]
+
+const loginCredentialsValidator = [
+    body('email').exists().isEmail(),
+    body('password').exists(),
+    validationGuard
+]
 
 export default function(app){
-    app.post("/auth/signup"         , postSignUp)
-    app.post("/auth/login"          , postLogin)
+    app.post("/auth/signup"         , userProfileValidator, postSignUp)
+    app.post("/auth/login"          , loginCredentialsValidator, postLogin)
     app.post("/auth/refresh"        , postRefresh)
     app.get ("/auth/profile"        , getProfile)
     app.get ("/auth/verify/:tok"    , getVerify)
