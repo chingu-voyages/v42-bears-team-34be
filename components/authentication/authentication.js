@@ -1,23 +1,42 @@
-import "../../services/emailer.js"
-import User from "../../schemas/user.js"
-
+// libraries
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
+// validator
+import { userProfileValidator, loginCredentialsValidator } from './validators.js';
+
+// schemas
+import User from "../../schemas/user.js"
+
+// services
+import "../../services/emailer.js"
+
 // create account
+// this should schedule an "activate your account" email.
 async function postSignUp(req,res){
-    const newUser = new User({
-        firstName : req.body.firstName,
-        lastName  : req.body.lastName,
-        email     : req.body.email,
-        password  : req.body.password
-    })
-
-    await newUser.validateSync()
-    await newUser.save()
-
-    res.status(201).json({
-        msg : "Your account has been created, but it's pending activation. (not really, just login)"
-    })
+    try{
+        const hashedPassword = await bcrypt.hash(req.body.password,10);
+        const newUser = new User({
+            role            : 'user',
+            firstName       : req.body.firstName,
+            lastName        : req.body.lastName,
+            email           : req.body.email,
+            hashedPassword  : hashedPassword,
+            dateOfBirth     : new Date(req.body.dateOfBirth),
+            dateSignedUp    : new Date(Date.now()),
+            active          : true  // make this one false when email integration is functional 
+        })
+        newUser.validateSync()
+        await newUser.save()
+        res.status(201).json({
+            msg : "Your account has been created, but it's pending activation. (not really, just login)"
+        })
+    }catch(e){
+        console.error(e.error)
+        res.status(500).json({
+            msg : "Something went wrong: "+ e.message
+        })
+    }
 }
 
 // login
@@ -28,37 +47,58 @@ async function postLogin(req,res){
         - use bcrypt to encode / decode it
         - if it's ok, send a token
     */
+    try{
+        const user = await User.findOne({
+            email    : req.body.email
+        }).exec()
+    
+        // user can be null.
+        if (!user)
+            throw new Error("User not found or password is incorrect.")
 
-    const user = await User.findOne({
-        email    : req.body.email,
-        password : req.body.password 
-    }).exec()
+        // compare hashedPassword with the provided password
+        let result = await bcrypt.compare(req.body.password, user.hashedPassword)
 
-    // user can be null.
-    if(!user){
-        throw "Either a user with that e-mail was not found or the password is wrong."
+        if(!result)
+            throw new Error("User not found or password is incorrect.")
+    
+        let { _id, firstName, lastName, email, role } = user
+    
+        // make a JWT
+        let token = jwt.sign(
+            {
+                id : _id,
+                firstName,
+                lastName,
+                email,
+                role
+            }, 
+            process.env.LOANAPP_JWT_SECRET,
+            {
+                expiresIn: process.env.LOANAPP_JWT_DURATION
+            }
+        )
+
+        // send it back
+        res.status(200).json({
+            tok : token
+        })
+    }catch(e){
+        res.status(500).json({
+            err : e.message
+        })
     }
-
-    let { _id, firstName, lastName, email } = user
-
-    // make a JWT
-    let token = jwt.sign({
-        id : _id,
-        firstName : firstName,
-        lastName  : lastName,
-        email     : email
-    }, process.env.LOANAPP_JWT_SECRET)
-
-    // send it back
-    res.status(200).json({
-        tok : token
-    })
 }
 
 // jwt refresh
 // if the token is within the expiraiton period,
 // returns a fresh one.
 function postRefresh(req,res){
+    // What should this actually do?
+    // A valid token for a deleted user profile can lead to
+    // undefined behavior
+    // should we make a DB query to see if the user is still active?
+
     res.json({
         msg : "Ok."
     })
@@ -68,6 +108,7 @@ function postRefresh(req,res){
 function getProfile(req,res){
     // middleware should have placed the 
     // token inside the Authorization header before the request gets here.
+    // if it's expired, it will return a object with a single "expired = true" field.
     res.json( req.auth )
 }
 
@@ -99,11 +140,9 @@ function postForgotPassword(req,res){
     })
 }
 
-
-
 export default function(app){
-    app.post("/auth/signup"         , postSignUp)
-    app.post("/auth/login"          , postLogin)
+    app.post("/auth/signup"         , userProfileValidator     , postSignUp)
+    app.post("/auth/login"          , loginCredentialsValidator, postLogin)
     app.post("/auth/refresh"        , postRefresh)
     app.get ("/auth/profile"        , getProfile)
     app.get ("/auth/verify/:tok"    , getVerify)

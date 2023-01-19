@@ -12,10 +12,10 @@ const db = {
 
         mongoose.set('strictQuery', false);
 
-        console.log("DB is initialized here")
+        console.log("DB is initialized here...")
 
         mongoose.connect(mongoUri).then( ()=>{
-            console.log("Connected to mongo database")
+            console.log("Connected to mongo database!")
         })
     }
 }
