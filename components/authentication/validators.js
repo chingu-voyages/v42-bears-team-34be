@@ -42,11 +42,6 @@ export const adminCreationGuard = (_, res, next) => {
        Falsy will return a 401
     */
     const adminMode = process.env.ALLOW_ADMIN_ACCOUNT_CREATION;
-    if (!adminMode) {
-        return res.status(401).json({
-            err : errorMessage
-        }) 
-    }
     if (adminMode !== "true") {
         return res.status(401).json({
             err : errorMessage
