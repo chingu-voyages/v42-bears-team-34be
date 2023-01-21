@@ -23,6 +23,12 @@ db.initialize()
 // for now this will use cors
 app.use(cors())
 
+// Options
+app.options("/auth/admin-create", cors({
+    exposedHeaders: [
+        "x-api-key"
+    ]
+}))
 app.use(
     expressjwt({
         secret: process.env.LOANAPP_JWT_SECRET,
