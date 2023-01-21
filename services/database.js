@@ -8,7 +8,7 @@ const db = {
             base = process.env.MONGO_BASE,
             db   = process.env.MONGO_DBNAME
         const
-            mongoUri = `mongodb+srv://${user}:${pass}@${base}/?retryWrites=true&w=majority`
+            mongoUri = `mongodb+srv://${user}:${pass}@${base}/${db}?retryWrites=true&w=majority`
 
         mongoose.set('strictQuery', false);
 
