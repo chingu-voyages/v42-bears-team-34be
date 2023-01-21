@@ -1,7 +1,9 @@
+import dotenv from 'dotenv'
 import { body }  from 'express-validator';
 import dayjs from 'dayjs';
-
 import validationGuard from '../../middleware/validationGuard.js'
+
+dotenv.config();
 
 export const userProfileValidator = [
     body('email').isEmail(),
@@ -25,3 +27,53 @@ export const loginCredentialsValidator = [
     validationGuard
 ]
 
+export const adminCreationValidator = [
+    body('email').isEmail(),
+    body('firstName').exists().trim().escape(),
+    body('lastName').exists().trim().escape(),
+    body('password').exists(),
+    validationGuard,
+]
+
+export const adminCreationGuard = (_, res, next) => {
+    /* Middleware. 
+       Checks if the admin creation is set to "true" in the .env variable
+       It checks explicitly for the string "true".
+       Falsy will return a 401
+    */
+    const adminMode = process.env.ALLOW_ADMIN_ACCOUNT_CREATION;
+    const errorMessage = "This request is not authorized. Please check with your administrator to enable this feature."
+
+    if (!adminMode) {
+        return res.status(401).json({
+            err : errorMessage
+        }) 
+    }
+    if (adminMode !== "true") {
+        return res.status(401).json({
+            err : errorMessage
+        }) 
+    }
+    next()
+}
+
+export const adminAuthTokenGuard = (req, res, next) => {
+    /* 
+    Middleware that checks for the admin token in the 'x-api-key' header
+    If it's null or invalid, return a 401 response.
+    User needs this to be valid to create an admin account
+    */
+
+    const ADMIN_TOKEN_ENV = process.env.ADMIN_TOKEN;
+    if (!ADMIN_TOKEN_ENV) return res.status(401).json({
+        err : errorMessage
+    });
+    const token = req.headers["x-api-key"];
+    if (token && token === ADMIN_TOKEN_ENV) {
+        next();
+    } else {
+        return res.status(401).send({
+            error: "Invalid or missing admin token. Check with your administrator to enable this feature.",
+        });
+    }
+}

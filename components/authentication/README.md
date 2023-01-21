@@ -1,6 +1,6 @@
 # Authentication
 
-This is the component for user signup/signin.
+This is the component for user signup/signin and admin account creation.
 
 # Endpoints
 
@@ -26,6 +26,28 @@ Failure:
 }
 ```
 
+## Admin account creation
+```
+POST /auth/admin-create
+
+x-www-form-urlencoded body:
+    email
+    firstName
+    lastName
+    password
+
+A valid admin token must be set in your server environment variable (see main README) and must be included in the custom 'x-api-key' header in the POST request.
+
+Success:
+{
+    msg : "Admin account created"
+}
+
+Failure:
+{
+    err : (reason why the account could not be created)
+}
+```
 ## Signin
 
 The contents of the token are yet to be specified, but should contain  "created at" , "good until" and "permissions" fields.
