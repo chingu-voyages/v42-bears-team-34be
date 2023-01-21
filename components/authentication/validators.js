@@ -1,9 +1,7 @@
-import dotenv from 'dotenv'
 import { body }  from 'express-validator';
 import dayjs from 'dayjs';
 import validationGuard from '../../middleware/validationGuard.js'
 
-dotenv.config();
 const errorMessage = "This request is not authorized. Please check with your administrator to enable this feature."
 export const userProfileValidator = [
     body('email').isEmail(),
