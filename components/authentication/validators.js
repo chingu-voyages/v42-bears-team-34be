@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 import validationGuard from '../../middleware/validationGuard.js'
 
 dotenv.config();
-
+const errorMessage = "This request is not authorized. Please check with your administrator to enable this feature."
 export const userProfileValidator = [
     body('email').isEmail(),
     body('firstName').exists().trim().escape(),
@@ -42,8 +42,6 @@ export const adminCreationGuard = (_, res, next) => {
        Falsy will return a 401
     */
     const adminMode = process.env.ALLOW_ADMIN_ACCOUNT_CREATION;
-    const errorMessage = "This request is not authorized. Please check with your administrator to enable this feature."
-
     if (!adminMode) {
         return res.status(401).json({
             err : errorMessage
@@ -70,10 +68,10 @@ export const adminAuthTokenGuard = (req, res, next) => {
     });
     const token = req.headers["x-api-key"];
     if (token && token === ADMIN_TOKEN_ENV) {
-        next();
+        next()
     } else {
         return res.status(401).send({
             error: "Invalid or missing admin token. Check with your administrator to enable this feature.",
-        });
+        })
     }
 }

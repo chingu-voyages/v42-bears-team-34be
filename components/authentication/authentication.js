@@ -3,8 +3,13 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 // validator
-import { userProfileValidator, loginCredentialsValidator, adminCreationGuard, adminCreationValidator, adminAuthTokenGuard } from './validators.js';
-
+import { 
+    userProfileValidator,
+    loginCredentialsValidator,
+    adminCreationGuard,
+    adminCreationValidator,
+    adminAuthTokenGuard 
+} from './validators.js';
 
 // schemas
 import User from "../../schemas/user.js"
