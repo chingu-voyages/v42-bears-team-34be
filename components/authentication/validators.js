@@ -33,6 +33,11 @@ export const adminCreationValidator = [
     validationGuard,
 ]
 
+export const linkPublicTokenValidator = [
+    body('publicToken').exists(),
+    validationGuard
+]
+
 export const adminCreationGuard = (_, res, next) => {
     /* Middleware. 
        Checks if the admin creation is set to "true" in the .env variable
