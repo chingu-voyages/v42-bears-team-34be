@@ -11,3 +11,6 @@ x-www-form-urlencoded body:
 
 
 ```
+
+# Schema
+- liabilities.sample.json contains a sample structure for plaid liabilities data response
