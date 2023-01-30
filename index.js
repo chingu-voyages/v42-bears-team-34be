@@ -40,7 +40,7 @@ app.use(
 // clear expired tokens
 app.use((req, res, next) => {
     // expiration date is in seconds 
-    if(req.auth?.exp*1000 < Date.now()/1000){
+    if(req.auth?.exp < Date.now()/1000){
         req.auth = {
             expired : true
         }
