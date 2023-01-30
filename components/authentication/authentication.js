@@ -90,16 +90,24 @@ async function postLogin(req,res){
     
         // user can be null.
         if (!user)
-            throw new Error("User not found or password is incorrect.")
+            return res.status(401).json({ err: "User not found or password is incorrect."})
 
         // compare hashedPassword with the provided password
         let result = await bcrypt.compare(req.body.password, user.hashedPassword)
 
         if(!result)
-            throw new Error("User not found or password is incorrect.")
+            return res.status(401).json({ err: "User not found or password is incorrect."})
     
         let { _id, firstName, lastName, email, role } = user
-    
+
+        // If the isAdmin flag is present and set to true, make sure the
+        // user actually has an admin status. If they don't, throw
+        if (req.body.isAdmin === "true") {
+            if (role !== "admin") {
+                return res.status(401).json({err: "Access is denied due to invalid access level" })
+            }
+        }
+
         // make a JWT
         let token = jwt.sign(
             {
