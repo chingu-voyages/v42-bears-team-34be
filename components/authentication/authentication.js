@@ -134,10 +134,33 @@ function postRefresh(req,res){
     // A valid token for a deleted user profile can lead to
     // undefined behavior
     // should we make a DB query to see if the user is still active?
+    try{
+        let oldToken = {...req.auth}
+        // we don't need to check if it's null or undefined because the
+        // protectedRoute middleware did this before we got here.
+        if(oldToken.expired)
+            return res.status(401).json({
+                err : "Expired session. Please login again."
+            })
 
-    res.json({
-        msg : "Ok."
-    })
+        // clear exp and iat
+        delete oldToken.iat
+        delete oldToken.exp
+        let newToken = jwt.sign(
+            oldToken,
+            process.env.LOANAPP_JWT_SECRET,
+            {
+                expiresIn: process.env.LOANAPP_JWT_DURATION
+            }
+        )
+        res.status(200).json({
+            tok : newToken
+        })
+    }catch(e){
+        res.status(500).json({
+            err : e.message
+        })
+    }
 }
 
 // For checking if the JWT is readable
