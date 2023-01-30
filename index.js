@@ -67,7 +67,7 @@ app.use( (err,req,res, next) =>{
     switch(err.name){
         case "UnauthorizedError":
             res.status(401).json({
-                err : "Invalid authentication"
+                err : `Invalid authentication: ${err}`
             })
         break;
         default:
