@@ -139,7 +139,9 @@ function postRefresh(req,res){
         // we don't need to check if it's null or undefined because the
         // protectedRoute middleware did this before we got here.
         if(oldToken.expired)
-            throw new Error("Expired token.")
+            return res.status(401).json({
+                err : "Expired session. Please login again."
+            })
 
         // clear exp and iat
         delete oldToken.iat
@@ -159,13 +161,6 @@ function postRefresh(req,res){
             err : e.message
         })
     }
-
-    let oldToken = req.auth
-    if(oldToken.expired)
-
-    res.json({
-        msg : "Ok."
-    })
 }
 
 // For checking if the JWT is readable
