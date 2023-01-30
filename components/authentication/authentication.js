@@ -3,7 +3,13 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 // validator
-import { userProfileValidator, loginCredentialsValidator } from './validators.js';
+import { 
+    userProfileValidator,
+    loginCredentialsValidator,
+    adminCreationGuard,
+    adminCreationValidator,
+    adminAuthTokenGuard 
+} from './validators.js';
 
 // schemas
 import User from "../../schemas/user.js"
@@ -32,6 +38,36 @@ async function postSignUp(req,res){
             msg : "Your account has been created, but it's pending activation. (not really, just login)"
         })
     }catch(e){
+        console.error(e.error)
+        res.status(500).json({
+            msg : "Something went wrong: "+ e.message
+        })
+    }
+}
+
+/* Create admin account 
+   admin account creation environment variable needs to be set to true for this to work
+  admin token needs to be in the 'x-api-key' req.header for this to work
+*/
+async function postCreateAdmin(req,res){
+    try {
+        const hashedPassword = await bcrypt.hash(req.body.password,10);
+        const newUser = new User({
+            role            : 'admin',
+            firstName       : req.body.firstName,
+            lastName        : req.body.lastName,
+            email           : req.body.email,
+            hashedPassword  : hashedPassword,
+            dateSignedUp    : new Date(Date.now()), // not necessary for admin
+            dateOfBirth     : new Date(Date.now()), // not necessary for admin
+            active          : true
+        })
+        newUser.validateSync()
+        await newUser.save()
+        res.status(201).json({
+            msg : "Admin account created"
+        })
+    } catch (e) {
         console.error(e.error)
         res.status(500).json({
             msg : "Something went wrong: "+ e.message
@@ -142,6 +178,7 @@ function postForgotPassword(req,res){
 
 export default function(app){
     app.post("/auth/signup"         , userProfileValidator     , postSignUp)
+    app.post("/auth/admin-create"   , adminCreationGuard, adminAuthTokenGuard, adminCreationValidator, postCreateAdmin)
     app.post("/auth/login"          , loginCredentialsValidator, postLogin)
     app.post("/auth/refresh"        , postRefresh)
     app.get ("/auth/profile"        , getProfile)

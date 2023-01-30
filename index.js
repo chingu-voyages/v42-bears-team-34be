@@ -1,18 +1,16 @@
 import dotenv from 'dotenv'
+// environment variables must be set before connection with db is established
+dotenv.config()
+
 import express from 'express'
 import cors from 'cors'
 import { urlencoded } from 'express'
-
 import { expressjwt } from 'express-jwt'
-
-// environment variables must be set before connection with db is established
-dotenv.config()
 
 // import our components
 import authentication from './components/authentication/authentication.js'
 import plaid from "./components/plaid/plaid.js"
 import db from './services/database.js'
-
 
 const
     app = express()
@@ -20,12 +18,17 @@ const
 
 db.initialize()
 
-
 // register all our middlewares
 
 // for now this will use cors
 app.use(cors())
 
+// Options
+app.options("/auth/admin-create", cors({
+    exposedHeaders: [
+        "x-api-key"
+    ]
+}))
 app.use(
     expressjwt({
         secret: process.env.LOANAPP_JWT_SECRET,
@@ -74,8 +77,8 @@ app.use( (err,req,res, next) =>{
     }
 })
  
-app.get("/status", (req,res)=>{
-    res.status(200).send("I'm alive")
+app.get("/link_tester", (req,res)=>{
+    res.sendFile(process.cwd()+"/linktester.html")
 })
 
 const port = process.env.LOANAPP_PORT

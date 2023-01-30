@@ -18,6 +18,12 @@ const ApplicationSchema = new mongoose.Schema({
     paymentAmount : {
         type: Number, required: true
     },
+    // Dump plaid response data here
+    financialData: {
+        liabilities: {
+            type: {}, required: true
+        }
+    },
     status : String,
     
     requestedBy: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
