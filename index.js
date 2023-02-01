@@ -9,6 +9,8 @@ import { expressjwt } from 'express-jwt'
 
 // import our components
 import authentication from './components/authentication/authentication.js'
+import application    from './components/application/application.js'
+
 import plaid from "./components/plaid/plaid.js"
 import db from './services/database.js'
 
@@ -58,6 +60,7 @@ app.use(urlencoded({
 
 // tell our components to register all their routes
 authentication(app)
+application   (app)
 plaid         (app)
 
 

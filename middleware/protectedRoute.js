@@ -1,5 +1,5 @@
 export function protectedRoute (req, res, next) {
-  if (!req.auth) {
+  if (!req.auth || req.auth.expired) {
     return res.status(401).json({
       err : "Login first."
     })
