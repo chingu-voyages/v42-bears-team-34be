@@ -3,6 +3,7 @@ import { body }  from 'express-validator';
 
 // validator
 import {  protectedRoute } from '../../middleware/protectedRoute.js';
+import {  adminRoute }     from '../../middleware/adminRoute.js';
 
 import validationGuard from '../../middleware/validationGuard.js'
 
@@ -17,7 +18,7 @@ import "../../services/emailer.js"
 
 async function postMakeApplication(req,res,ext){
     // if multiple applications aren't allowed, we check if there's a single Application for user id where status is pending
-    // does this need to be a middleware? I don't think so
+    // does this need to be a middleware? I don't think so <- answer is no, leaving this here for historic reasons
 
     try{
         if(process.env.ALLOW_MULTIPLE_APPLICATIONS !== "true"){
@@ -62,7 +63,7 @@ async function postMakeApplication(req,res,ext){
 }
 
 
-async function getMyApplications(req,res,next){
+async function getApplicationsForAuthenticatedUser(req,res,next){
     try{
         let applications = await Application.find({
             requestedBy : req.auth.id
@@ -85,13 +86,19 @@ async function getMyApplications(req,res,next){
     }
 }
 
-async function getViewApplication(req,res,next){
+async function getApplicationById(req,res,next){
     try{
         // find application by id and user
-        let a = await Application.findOne({
-            _id         : req.params.id,
-            requestedBy : req.auth.id,
-        })
+        let criteria = {
+            _id : req.params.id
+        }
+
+        // admin can bypass the application ownership 
+        if("admin" !== req.auth.role){
+            criteria.requestedBy == req.auth.id
+        }
+
+        let a = await Application.findOne(criteria)
         if(!a){
             return next(
                 new Error("No such application for the current user.")
@@ -125,12 +132,22 @@ async function getViewApplication(req,res,next){
  */
 async function postCancelApplication(req,res,next){
     try{
-        let application = await Application.findOne({
-            // this is necessary.
-            _id         : req.params.id,
-            requestedBy : req.auth.id,
-            status      : "pending"
-        })
+        // find application by id and user
+        let criteria = {
+            _id : req.params.id
+        }
+
+        // admin can bypass the application ownership 
+        if("admin" !== req.auth.role){
+            criteria.requestedBy == req.auth.id
+        }
+
+        let application = await Application.findOne(criteria)
+        if(!application){
+            return next(
+                new Error("No such application for the current user.")
+            )
+        }
 
         // did not find it.
         if(application == null){
@@ -152,8 +169,6 @@ async function postCancelApplication(req,res,next){
         return next(e)
     }
 }
-
-
 
 
 function adminGetAllApplications(req,res){
@@ -190,15 +205,13 @@ export default function(app){
     // user procedures
     app.post("/application/apply"      , applicationValidator,postMakeApplication)
     app.post("/application/cancel/:id" , protectedRoute      ,postCancelApplication)
-    app.get ("/application/view/:id"   , protectedRoute      ,getViewApplication)
-    app.get ("/application/my"         , protectedRoute      ,getMyApplications)
+    app.get ("/application/view/:id"   , protectedRoute      ,getApplicationById)
+    app.get ("/application/my"         , protectedRoute      ,getApplicationsForAuthenticatedUser)
 
     // administrative procedures
-    // TODO: make those 3 admin-only routes
-    app.get ("/admin/application/all"        , protectedRoute, adminGetAllApplications    )
-    app.post("/admin/application/approve/:id", protectedRoute, adminPostApproveApplication)
-    app.post("/admin/application/reject/:id" , protectedRoute, adminPostRejectApplication )
-
+    app.get ("/admin/application/all"        , adminRoute, adminGetAllApplications    )
+    app.post("/admin/application/approve/:id", adminRoute, adminPostApproveApplication)
+    app.post("/admin/application/reject/:id" , adminRoute, adminPostRejectApplication )
 
     console.log("Application component registered.")
 }
