@@ -1,20 +1,19 @@
-// libraries
-import { body }  from 'express-validator';
-
 // validator
 import {  protectedRoute } from '../../middleware/protectedRoute.js';
 import {  adminRoute }     from '../../middleware/adminRoute.js';
 
-import validationGuard from '../../middleware/validationGuard.js'
+// component level validators
+import { 
+    applicationValidator,
+    userApplicationQueryValidator,
+    adminApplicationQueryValidator
+} from './validators.js';
 
 // schemas
 import  {Application, ApplicationStatus} from "../../schemas/application.js"
 
 // services
 import "../../services/emailer.js"
-
-
-
 
 async function postMakeApplication(req,res,next){
 
@@ -95,8 +94,10 @@ async function getApplicationById(req,res,next){
         }
 
         // admin can bypass the application ownership 
+        console.log("User role: "+req.auth.role)
         if("admin" !== req.auth.role){
-            criteria.requestedBy == req.auth.id
+            console.log("We need to check abainst the id")
+            criteria.requestedBy = req.auth.id
         }
 
         let a = await Application.findOne(criteria)
@@ -193,28 +194,17 @@ function adminPostRejectApplication(req,res){
     })
 }
 
-
-export const applicationValidator = [
-    protectedRoute,
-    body('amount').isNumeric(),
-    body('payments').isNumeric(),
-    body('paymentAmount').isNumeric(),
-    body('reason').exists().trim().escape(),
-    body('description').exists().trim().escape(),
-    validationGuard
-]
-
 export default function(app){
     // user procedures
-    app.post("/application/apply"      , applicationValidator,postMakeApplication)
-    app.post("/application/cancel/:id" , protectedRoute      ,postCancelApplication)
-    app.get ("/application/view/:id"   , protectedRoute      ,getApplicationById)
-    app.get ("/application/my"         , protectedRoute      ,getApplicationsForAuthenticatedUser)
+    app.post("/application/apply"      , applicationValidator           ,postMakeApplication)
+    app.post("/application/cancel/:id" , userApplicationQueryValidator  ,postCancelApplication)
+    app.get ("/application/view/:id"   , userApplicationQueryValidator  ,getApplicationById)
+    app.get ("/application/my"         , protectedRoute                 ,getApplicationsForAuthenticatedUser)
 
     // administrative procedures
-    app.get ("/admin/application/all"        , adminRoute, adminGetAllApplications    )
-    app.post("/admin/application/approve/:id", adminRoute, adminPostApproveApplication)
-    app.post("/admin/application/reject/:id" , adminRoute, adminPostRejectApplication )
+    app.get ("/admin/application/all"        , adminRoute                    , adminGetAllApplications    )
+    app.post("/admin/application/approve/:id", adminApplicationQueryValidator, adminPostApproveApplication)
+    app.post("/admin/application/reject/:id" , adminApplicationQueryValidator, adminPostRejectApplication )
 
     console.log("Application component registered.")
 }
