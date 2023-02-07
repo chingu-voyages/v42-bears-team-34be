@@ -49,4 +49,17 @@ const ApplicationSchema = new mongoose.Schema({
 
 const Application = mongoose.model('Application',ApplicationSchema)
 
-export default  Application
+const ApplicationStatus = {
+    Pending  : "pending",
+    Approved : "approved",
+    Rejected : "rejected",
+    Cancelled: "cancelled"
+}
+
+export default { Application, ApplicationStatus}
+export { Application };
+export { ApplicationStatus }
+
+
+
+

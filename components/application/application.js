@@ -8,7 +8,7 @@ import {  adminRoute }     from '../../middleware/adminRoute.js';
 import validationGuard from '../../middleware/validationGuard.js'
 
 // schemas
-import Application from "../../schemas/application.js"
+import  {Application, ApplicationStatus} from "../../schemas/application.js"
 
 // services
 import "../../services/emailer.js"
@@ -24,7 +24,7 @@ async function postMakeApplication(req,res,ext){
         if(process.env.ALLOW_MULTIPLE_APPLICATIONS !== "true"){
             let application = await Application.findOne({
                 requestedBy  : req.auth.id,
-                status       : "pending"
+                status       : ApplicationStatus.Pending
             }).exec()
     
             if(application !== null){
@@ -41,7 +41,7 @@ async function postMakeApplication(req,res,ext){
             reason       : req.body.reason,
             description  : req.body.description,
             requestedBy  : req.auth.id,
-            status       : "pending"
+            status       : ApplicationStatus.Pending
         })
 
         // client made an invalid request
@@ -135,7 +135,7 @@ async function postCancelApplication(req,res,next){
         // find application by id and user
         let criteria = {
             _id : req.params.id,
-            status : "pending"
+            status : ApplicationStatus.Pending
         }
 
         // admin can bypass the application ownership 
@@ -151,7 +151,7 @@ async function postCancelApplication(req,res,next){
         }
 
         // change status to cancelled.
-        application.status = "cancelled"
+        application.status = ApplicationStatus.Cancelled
         await application.save()
 
         return res.status(200).json({
@@ -165,9 +165,18 @@ async function postCancelApplication(req,res,next){
 }
 
 
-function adminGetAllApplications(req,res){
+
+async function adminGetAllApplications(req,res){
+    let applications = await Application.find()
+    if(!applications){
+        return next(
+            new Error("No applications.")
+        )
+    }
+
     res.status(200).json({
-        msg : "All applications."
+        msg  : "All applications.",
+        applications : applications
     })
 }
 
