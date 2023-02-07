@@ -176,7 +176,6 @@ async function adminGetAllApplications(req,res){
     }
 
     res.status(200).json({
-        msg  : "All applications.",
         applications : applications
     })
 }
