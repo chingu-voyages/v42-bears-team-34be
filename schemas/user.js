@@ -21,6 +21,9 @@ const UserSchema = new mongoose.Schema({
     hashedPassword  : {
         type: String, required: true
     },
+    gender    : {
+        type: String, required: true
+    },
     applications : [{
         type: mongoose.Schema.Types.ObjectId, ref: 'Application'
     }],

@@ -3,10 +3,10 @@ import mongoose from 'mongoose'
 console.log("Applicaton Schema imported")
 
 const ApplicationSchema = new mongoose.Schema({
-    amount : {
+    requestedLoanAmount : {
         type: Number, required: true, min : [0, "Amount is too small"]
     },
-    reason : {
+    loanPurpose : {
         type: String, required: true
     },
     description : {
@@ -23,6 +23,9 @@ const ApplicationSchema = new mongoose.Schema({
             message : "Total payment amount must be larger than requested amount."
         }
     },
+    applicantIncome: {
+        type: Number, required: true
+    },
     // Dump plaid response data here
     financialData: {
         liabilities: {
@@ -30,6 +33,9 @@ const ApplicationSchema = new mongoose.Schema({
         }
     },
 
+    applicantOccupation: {
+        type: String, required: true
+    },
     // this can be: pending, approved, rejected, cancelled
     status : String,
 

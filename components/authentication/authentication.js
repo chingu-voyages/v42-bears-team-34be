@@ -21,6 +21,17 @@ import "../../services/emailer.js"
 // this should schedule an "activate your account" email.
 async function postSignUp(req,res){
     try{
+
+        /* First we should safely check if the e-mail already exists in our db
+            If it does, we can return a 400 error and prompt the client to log in
+        */
+        const userAlreadyExists = await checkIfUserExistsInDb(req.body.email);
+        if (userAlreadyExists) {
+            return res.status(400).json({
+                msg: `$EMAIL_EXISTS ${req.body.email} already exists.`
+            })
+        }
+
         const hashedPassword = await bcrypt.hash(req.body.password,10);
         const newUser = new User({
             role            : 'user',
@@ -30,6 +41,7 @@ async function postSignUp(req,res){
             hashedPassword  : hashedPassword,
             dateOfBirth     : new Date(req.body.dateOfBirth),
             dateSignedUp    : new Date(Date.now()),
+            gender          : req.body.gender,
             active          : true  // make this one false when email integration is functional 
         })
 
@@ -65,6 +77,7 @@ async function postCreateAdmin(req,res){
             hashedPassword  : hashedPassword,
             dateSignedUp    : new Date(Date.now()), // not necessary for admin
             dateOfBirth     : new Date(Date.now()), // not necessary for admin
+            gender          : req.body.gender,
             active          : true
         })
         newUser.validateSync()
@@ -210,6 +223,23 @@ function postForgotPassword(req,res){
     res.status(200).json({
         msg : "If the e-mail belongs to an account, you'll be receiving a password-reset e-mail soon."
     })
+}
+
+/**
+ * 
+ * @param {string} email
+ * @returns {Promise<boolean>}
+ */
+async function checkIfUserExistsInDb (email) {
+    try {
+        const user = await User.findOne({ email: email });
+        if (user) return true;
+        return false;
+    } catch (error) {
+        return res.status(500).json({
+            msg: "Encountered a server error completing this request"
+        })
+    }
 }
 
 export default function(app){

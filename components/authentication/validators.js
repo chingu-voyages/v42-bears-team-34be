@@ -8,6 +8,9 @@ export const userProfileValidator = [
     body('firstName').exists().trim().escape(),
     body('lastName').exists().trim().escape(),
     body('password').exists(),
+    body('gender').trim().escape().custom((value) => {
+        return ["male", "female", "other"].includes(value);
+    }),
     body('dateOfBirth').exists().custom(
         date =>{
             // maybe check if the person is at least X years old where X is how old you need
@@ -30,6 +33,9 @@ export const adminCreationValidator = [
     body('firstName').exists().trim().escape(),
     body('lastName').exists().trim().escape(),
     body('password').exists(),
+    body('gender').trim().escape().custom((value) => {
+        return ["male", "female", "other"].includes(value);
+    }),
     validationGuard,
 ]
 
