@@ -32,13 +32,18 @@ async function postSignUp(req,res){
             dateSignedUp    : new Date(Date.now()),
             active          : true  // make this one false when email integration is functional 
         })
-        newUser.validateSync()
+
+        // we actually need to throw an error, this doesn't do it by itself
+        let err = newUser.validateSync()
+        if(err){
+            throw err
+        }
+
         await newUser.save()
         res.status(201).json({
             msg : "Your account has been created, but it's pending activation. (not really, just login)"
         })
     }catch(e){
-        console.error(e.error)
         res.status(500).json({
             msg : "Something went wrong: "+ e.message
         })
