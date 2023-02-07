@@ -16,7 +16,8 @@ import "../../services/emailer.js"
 
 
 
-async function postMakeApplication(req,res,ext){
+async function postMakeApplication(req,res,next){
+
     // if multiple applications aren't allowed, we check if there's a single Application for user id where status is pending
     // does this need to be a middleware? I don't think so <- answer is no, leaving this here for historic reasons
 
