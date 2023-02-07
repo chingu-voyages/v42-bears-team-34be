@@ -13,11 +13,10 @@ This creates an application record tied to the user specified in req.auth
 POST /application/apply
 
 x-www-form-urlencoded body:
-    amount
-    payments
+    requestedLoanAmount
+    numberOfPayments
     paymentAmount
-    reason
-    description
+    loanPurpose
 
 Success:
 {
