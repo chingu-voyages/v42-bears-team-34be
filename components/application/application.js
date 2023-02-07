@@ -134,7 +134,8 @@ async function postCancelApplication(req,res,next){
     try{
         // find application by id and user
         let criteria = {
-            _id : req.params.id
+            _id : req.params.id,
+            status : "pending"
         }
 
         // admin can bypass the application ownership 
@@ -144,13 +145,6 @@ async function postCancelApplication(req,res,next){
 
         let application = await Application.findOne(criteria)
         if(!application){
-            return next(
-                new Error("No such application for the current user.")
-            )
-        }
-
-        // did not find it.
-        if(application == null){
             return next(
                 new Error("No pending application with that id for the current user.")
             )
