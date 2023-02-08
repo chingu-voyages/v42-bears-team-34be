@@ -9,16 +9,13 @@ const ApplicationSchema = new mongoose.Schema({
     loanPurpose : {
         type: String, required: true
     },
-    description : {
-        type: String, required: true
-    },
-    payments  : {
+    numberOfPayments  : {
         type: Number, required: true, min : [2, "At least 2 payments are required"]
     },
     paymentAmount : {
         type: Number, required: true, validate:{
             validator: function(value){
-                return value * this.payments >= this.amount
+                return value * this.numberOfPayments >= this.requestedLoanAmount
             },
             message : "Total payment amount must be larger than requested amount."
         }
@@ -37,7 +34,8 @@ const ApplicationSchema = new mongoose.Schema({
         type: String, required: true
     },
     // this can be: pending, approved, rejected, cancelled
-    status : String,
+    status : { type: String, enum: [ApplicationStatus.Pending, ApplicationStatus.Approved, ApplicationStatus.Rejected, ApplicationStatus
+    .Cancelled]},
 
     // who requested this loan
     requestedBy: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
@@ -48,10 +46,11 @@ const ApplicationSchema = new mongoose.Schema({
     rejectedReason : String,
     // when was this evaluated?
     evaluatedAt : Date,
-
-    createdAt  : Date,
-    updatedAt  : Date,
-})
+},
+    { 
+        timestamps: true
+    }
+)
 
 const Application = mongoose.model('Application',ApplicationSchema)
 
