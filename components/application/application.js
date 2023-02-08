@@ -98,7 +98,7 @@ async function getApplicationById(req,res,next){
             criteria.requestedBy = req.auth.id
         }
 
-        let a = await Application.findOne(criteria)
+        const a = await Application.findOne(criteria).exec()
         if(!a){
             return next(
                 new Error("No such application for the current user.")
@@ -132,17 +132,17 @@ async function getApplicationById(req,res,next){
 async function postCancelApplication(req,res,next){
     try{
         // find application by id and user
-        let criteria = {
+        const criteria = {
             _id : req.params.id,
             status : ApplicationStatus.Pending
         }
 
         // admin can bypass the application ownership 
         if("admin" !== req.auth.role){
-            criteria.requestedBy == req.auth.id
+            criteria[requestedBy] = req.auth.id
         }
 
-        let application = await Application.findOne(criteria)
+        const application = await Application.findOne(criteria).exec()
         if(!application){
             return next(
                 new Error("No pending application with that id for the current user.")
@@ -166,7 +166,7 @@ async function postCancelApplication(req,res,next){
 
 
 async function adminGetAllApplications(req,res){
-    let applications = await Application.find()
+    const applications = await Application.find().exec()
     if(!applications){
         return next(
             new Error("No applications.")
