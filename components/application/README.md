@@ -14,8 +14,8 @@ POST /application/apply
 
 x-www-form-urlencoded body:
     requestedLoanAmount
-    numberOfPayments
-    paymentAmount
+    numberOfInstallments
+    installmentAmount
     loanPurpose
 
 Success:

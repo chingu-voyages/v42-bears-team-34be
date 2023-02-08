@@ -36,8 +36,8 @@ async function postMakeApplication(req,res,next){
 
         let application = new Application({
             requestedLoanAmount : parseFloat(req.body.requestedLoanAmount),
-            numberOfPayments    : parseInt  (req.body.numberOfPayments),
-            paymentAmount       : parseFloat(req.body.paymentAmount),
+            numberOfInstallments    : parseInt  (req.body.numberOfInstallments),
+            installmentAmount       : parseFloat(req.body.installmentAmount),
             loanPurpose         : req.body.loanPurpose,
             requestedBy         : req.auth.id,
             status              : ApplicationStatus.Pending
@@ -72,8 +72,8 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
                 // should we wend this one out?
                 id                  : a.id,
                 requestedLoanAmount : a.requestedLoanAmount,
-                numberOfPayments    : a.numberOfPayments,
-                paymentAmount       : a.paymentAmount,
+                numberOfInstallments: a.numberOfInstallments,
+                installmentAmount   : a.installmentAmount,
                 loanPurpose         : a.loanPurpose,
                 status              : a.status
             })
@@ -108,8 +108,8 @@ async function getApplicationById(req,res,next){
         // we don't let the user see very single detail.
         let result = {
             requestedLoanAmount : a.requestedLoanAmount,
-            numberOfPayments    : a.numberOfPayments,
-            paymentAmount       : a.paymentAmount,
+            numberOfInstallments: a.numberOfInstallments,
+            installmentAmount   : a.installmentAmount,
             loanPurpose         : a.loanPurpose,
             status              : a.status,
             requestedAt         : a.createdAt

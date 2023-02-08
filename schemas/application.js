@@ -9,13 +9,13 @@ const ApplicationSchema = new mongoose.Schema({
     loanPurpose : {
         type: String, required: true
     },
-    numberOfPayments  : {
-        type: Number, required: true, min : [2, "At least 2 payments are required"]
+    numberOfInstallments : {
+        type: Number, required: true, min : [2, "At least 2 payment installments are required"]
     },
-    paymentAmount : {
+    installmentAmount : {
         type: Number, required: true, validate:{
             validator: function(value){
-                return value * this.numberOfPayments >= this.requestedLoanAmount
+                return value * this.numberOfInstallments >= this.requestedLoanAmount
             },
             message : "Total payment amount must be larger than requested amount."
         }

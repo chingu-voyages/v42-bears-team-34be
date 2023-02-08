@@ -8,8 +8,8 @@ import validationGuard     from '../../middleware/validationGuard.js'
 export const applicationValidator = [
     protectedRoute,
     body('requestedLoanAmount').isNumeric(),
-    body('numberOfPayments').isNumeric(),
-    body('paymentAmount').isNumeric(),
+    body('numberOfInstallments').isNumeric(),
+    body('installmentAmount').isNumeric(),
     body('loanPurpose').exists().trim().escape(),
     validationGuard
 ]
