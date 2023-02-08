@@ -35,13 +35,12 @@ async function postMakeApplication(req,res,next){
         }
 
         let application = new Application({
-            amount       : parseFloat(req.body.amount),
-            payments     : parseInt  (req.body.payments),
-            paymentAmount: parseFloat(req.body.paymentAmount),
-            reason       : req.body.reason,
-            description  : req.body.description,
-            requestedBy  : req.auth.id,
-            status       : ApplicationStatus.Pending
+            requestedLoanAmount : parseFloat(req.body.requestedLoanAmount),
+            numberOfPayments    : parseInt  (req.body.numberOfPayments),
+            paymentAmount       : parseFloat(req.body.paymentAmount),
+            loanPurpose         : req.body.loanPurpose,
+            requestedBy         : req.auth.id,
+            status              : ApplicationStatus.Pending
         })
 
         // client made an invalid request
@@ -71,13 +70,12 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
         // there are some details which we cannot provide to the user
         applications = applications.map( a => ({
                 // should we wend this one out?
-                id            : a.id,
-                amount        : a.amount,
-                payments      : a.payments,
-                paymentAmount : a.paymentAmount,
-                reason        : a.reason,
-                description   : a.description,
-                status        : a.status
+                id                  : a.id,
+                requestedLoanAmount : a.requestedLoanAmount,
+                numberOfPayments    : a.numberOfPayments,
+                paymentAmount       : a.paymentAmount,
+                loanPurpose         : a.loanPurpose,
+                status              : a.status
             })
         )
         res.status(200).json(applications)
@@ -109,13 +107,12 @@ async function getApplicationById(req,res,next){
 
         // we don't let the user see very single detail.
         let result = {
-            amount        : a.amount,
-            payments      : a.payments,
-            paymentAmount : a.paymentAmount,
-            reason        : a.reason,
-            description   : a.description,
-            status        : a.status,
-            requestedAt   : a.createdAt
+            requestedLoanAmount : a.requestedLoanAmount,
+            numberOfPayments    : a.numberOfPayments,
+            paymentAmount       : a.paymentAmount,
+            loanPurpose         : a.loanPurpose,
+            status              : a.status,
+            requestedAt         : a.createdAt
         }
 
         if("rejected" === a.status){
