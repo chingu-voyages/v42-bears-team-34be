@@ -36,8 +36,8 @@ async function postMakeApplication(req,res,next){
 
         let application = new Application({
             requestedLoanAmount : parseFloat(req.body.requestedLoanAmount),
-            numberOfInstallments    : parseInt  (req.body.numberOfInstallments),
-            installmentAmount       : parseFloat(req.body.installmentAmount),
+            numberOfInstallments: parseInt  (req.body.numberOfInstallments),
+            installmentAmount   : parseFloat(req.body.installmentAmount),
             loanPurpose         : req.body.loanPurpose,
             requestedBy         : req.auth.id,
             status              : ApplicationStatus.Pending
@@ -66,7 +66,7 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
     try{
         let applications = await Application.find({
             requestedBy : req.auth.id
-        })
+        }).exec()
         // there are some details which we cannot provide to the user
         applications = applications.map( a => ({
                 // should we wend this one out?
