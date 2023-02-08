@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { ApplicationStatus } from './application-status.js'
 
 console.log("Applicaton Schema imported")
 
@@ -54,17 +55,4 @@ const ApplicationSchema = new mongoose.Schema({
 
 const Application = mongoose.model('Application',ApplicationSchema)
 
-const ApplicationStatus = {
-    Pending  : "pending",
-    Approved : "approved",
-    Rejected : "rejected",
-    Cancelled: "cancelled"
-}
-
-export default { Application, ApplicationStatus}
-export { Application };
-export { ApplicationStatus }
-
-
-
-
+export default { Application }

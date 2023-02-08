@@ -2,15 +2,14 @@
 import {  protectedRoute } from '../../middleware/protectedRoute.js';
 import {  adminRoute }     from '../../middleware/adminRoute.js';
 
+import { ApplicationStatus } from '../../schemas/application-status.js';
+
 // component level validators
 import { 
     applicationValidator,
     userApplicationQueryValidator,
     adminApplicationQueryValidator
 } from './validators.js';
-
-// schemas
-import  {Application, ApplicationStatus} from "../../schemas/application.js"
 
 // services
 import "../../services/emailer.js"
