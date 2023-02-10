@@ -21,7 +21,7 @@ const UserSchema = new mongoose.Schema({
     hashedPassword  : {
         type: String, required: true
     },
-    gender    : {
+    applicantGender    : {
         type: String, required: true
     },
     applications : [{
