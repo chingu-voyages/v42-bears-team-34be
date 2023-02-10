@@ -24,13 +24,6 @@ const ApplicationSchema = new mongoose.Schema({
     applicantIncome: {
         type: Number, required: true
     },
-    // Dump plaid response data here
-    financialData: {
-        liabilities: {
-            type: {}
-        }
-    },
-
     applicantOccupation: {
         type: String, required: true
     },
@@ -53,6 +46,6 @@ const ApplicationSchema = new mongoose.Schema({
     }
 )
 
-const Application = mongoose.model('Application',ApplicationSchema)
+const ApplicationModel = mongoose.model('Application',ApplicationSchema)
 
-export default { Application }
+export { ApplicationModel }
