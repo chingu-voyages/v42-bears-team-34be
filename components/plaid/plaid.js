@@ -1,9 +1,10 @@
 
-import { Configuration, PlaidApi, Products, PlaidEnvironments } from 'plaid';
+import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
 import { protectedRoute } from "../../middleware/protectedRoute.js"
 import { linkPublicTokenValidator } from '../authentication/validators.js';
 import User from '../../schemas/user.js';
-import Application from '../../schemas/application.js';
+import { adminRoute } from '../../middleware/adminRoute.js';
+
 // values are initialized when this component
 // is associated with an express context
 const plaidAPI = {
@@ -123,25 +124,9 @@ async function getGetApplicantFinancialDetails(req,res){
       access_token: user.plaidAccessToken
     });
 
-    const newApplication = await saveUserApplication(
-      user,  
-      financialLiabilitiesRequest.data,
-      {
-        amount: 100,
-        reason: "loan",
-        description: "new loan",
-        payments: 0,
-        paymentAmount: 100
-      }
-    )
-
-    /* This is just for testing. We don't need to send this data back to the front end, except for a 200 response to
-      let front end know that financial data was obtained
-      We should save the data into the applications collection and updated the user document 
-    */
     res.status(200).json({
       itemId : plaidItemId,
-      application: newApplication // This is just for testing. Front end should re-request the data on the confirmation page
+      data: financialLiabilitiesRequest.data
     })
 
   }catch(e){
@@ -150,36 +135,6 @@ async function getGetApplicantFinancialDetails(req,res){
       err : `Something bad happened: ${e.message}`
     })
   }  
-}
-
-
-/**
- * Handles single or multi-application mode and saves the application and user documents
- * @param {UserDocument} userDocument MongoDB document instance
- * @param {} financialData The raw response from the plaid client request
- * @param {{ amount: number, reason: string, description: string, payments: number, paymentAmount: number }} applicationData The rest of the stuff from the user's application that is pertinent to the loan request, but not obtained by Plaid
- * @returns {Promise<ApplicationDocument>} created application
- */
-async function saveUserApplication (userDocument, financialData, applicationData) {
-  // We'll only support liabilities for now, so this will save specifically to that section of the financial data
-  const financialApplication = new Application({
-    ...applicationData,
-    requestedBy: userDocument._id,
-    status: "new",
-    financialData: {
-      liabilities: financialData
-    }
-  })
-  
-  const createdApplication = await financialApplication.save();
-  
-  if (allowMultipleApplications) {
-    userDocument.applications.push(createdApplication._id);
-  } else {
-    userDocument.applications = [createdApplication._id]
-  }
-  await userDocument.save();
-  return createdApplication;
 }
 
 const userNotFound = (res) => {
@@ -208,7 +163,7 @@ export default function(app){
   plaidAPI.client = new PlaidApi(plaidAPI.configuration);
 
   app.get ('/plaid/get_token', protectedRoute, getLinkToken);
-  app.get('/plaid/get_financial_details', protectedRoute, getGetApplicantFinancialDetails)
+  app.get('/plaid/get_financial_details', protectedRoute, adminRoute, getGetApplicantFinancialDetails)
   app.post('/plaid/set_public_token', protectedRoute, linkPublicTokenValidator, postSetPublicToken)
 
   console.log("Plaid component registered.")
