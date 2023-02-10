@@ -8,7 +8,7 @@ export const userProfileValidator = [
     body('firstName').exists().trim().escape(),
     body('lastName').exists().trim().escape(),
     body('password').exists(),
-    body('gender').trim().escape().custom((value) => {
+    body('applicantGender').trim().escape().custom((value) => {
         return ["male", "female", "other"].includes(value);
     }),
     body('dateOfBirth').exists().custom(
@@ -33,7 +33,7 @@ export const adminCreationValidator = [
     body('firstName').exists().trim().escape(),
     body('lastName').exists().trim().escape(),
     body('password').exists(),
-    body('gender').trim().escape().custom((value) => {
+    body('applicantGender').trim().escape().custom((value) => {
         return ["male", "female", "other"].includes(value);
     }),
     validationGuard,

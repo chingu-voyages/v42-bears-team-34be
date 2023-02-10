@@ -11,6 +11,8 @@ export const applicationValidator = [
     body('numberOfInstallments').isNumeric(),
     body('installmentAmount').isNumeric(),
     body('loanPurpose').exists().trim().escape(),
+    body('applicantOccupation').exists().trim().escape(),
+    body('applicantIncome').isNumeric(),
     validationGuard
 ]
 
