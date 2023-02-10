@@ -1,6 +1,7 @@
 // validator
 import {  protectedRoute } from '../../middleware/protectedRoute.js';
 import {  adminRoute }     from '../../middleware/adminRoute.js';
+import { ApplicationModel } from '../../schemas/application.js';
 
 import { ApplicationStatus } from '../../schemas/application-status.js';
 
@@ -21,7 +22,7 @@ async function postMakeApplication(req,res,next){
 
     try{
         if(process.env.ALLOW_MULTIPLE_APPLICATIONS !== "true"){
-            let application = await Application.findOne({
+            let application = await ApplicationModel.findOne({
                 requestedBy  : req.auth.id,
                 status       : ApplicationStatus.Pending
             }).exec()
@@ -33,10 +34,12 @@ async function postMakeApplication(req,res,next){
             }
         }
 
-        let application = new Application({
+        const application = await ApplicationModel.create({
             requestedLoanAmount : parseFloat(req.body.requestedLoanAmount),
             numberOfInstallments: parseInt  (req.body.numberOfInstallments),
             installmentAmount   : parseFloat(req.body.installmentAmount),
+            applicantOccupation : req.body.applicantOccupation,
+            applicantIncome     : parseFloat(req.body.applicantIncome),
             loanPurpose         : req.body.loanPurpose,
             requestedBy         : req.auth.id,
             status              : ApplicationStatus.Pending
@@ -63,11 +66,11 @@ async function postMakeApplication(req,res,next){
 
 async function getApplicationsForAuthenticatedUser(req,res,next){
     try{
-        let applications = await Application.find({
+        const userApplications = await ApplicationModel.find({
             requestedBy : req.auth.id
         }).exec()
         // there are some details which we cannot provide to the user
-        applications = applications.map( a => ({
+        const filteredApplications = userApplications.map( a => ({
                 // should we wend this one out?
                 id                  : a.id,
                 requestedLoanAmount : a.requestedLoanAmount,
@@ -77,7 +80,7 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
                 status              : a.status
             })
         )
-        res.status(200).json(applications)
+        res.status(200).json(filteredApplications).exec()
     }catch(e){
         return next(e)
     }
@@ -97,7 +100,7 @@ async function getApplicationById(req,res,next){
             criteria.requestedBy = req.auth.id
         }
 
-        const a = await Application.findOne(criteria).exec()
+        const a = await ApplicationModel.findOne(criteria).exec()
         if(!a){
             return next(
                 new Error("No such application for the current user.")
@@ -141,7 +144,7 @@ async function postCancelApplication(req,res,next){
             criteria[requestedBy] = req.auth.id
         }
 
-        const application = await Application.findOne(criteria).exec()
+        const application = await ApplicationModel.findOne(criteria).exec()
         if(!application){
             return next(
                 new Error("No pending application with that id for the current user.")
@@ -165,7 +168,7 @@ async function postCancelApplication(req,res,next){
 
 
 async function adminGetAllApplications(req,res){
-    const applications = await Application.find().exec()
+    const applications = await ApplicationModel.find().exec();
     if(!applications){
         return next(
             new Error("No applications.")
