@@ -15,7 +15,8 @@ import plaid from "./components/plaid/plaid.js"
 import db from './services/database.js'
 
 const
-    app = express()
+    app = express(),
+    router = express.Router()
 
 
 db.initialize()
@@ -58,10 +59,14 @@ app.use(urlencoded({
     extended: true
 }))
 
+
+
 // tell our components to register all their routes
-authentication(app)
-application   (app)
-plaid         (app)
+authentication(router)
+application   (router)
+plaid         (router)
+
+app.use('/api/',router)
 
 
 // if the frontend receives a 401 status, it should clear the
