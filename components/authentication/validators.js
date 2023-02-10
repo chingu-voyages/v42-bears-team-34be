@@ -1,4 +1,4 @@
-import { body }  from 'express-validator';
+import { body, param }  from 'express-validator';
 import dayjs from 'dayjs';
 import validationGuard from '../../middleware/validationGuard.js'
 
@@ -79,3 +79,9 @@ export const adminAuthTokenGuard = (req, res, next) => {
         })
     }
 }
+
+export const idValidator = (req, res, next) => [
+    param('id').isHexadecimal().trim().isLength({min: 24, max: 24}).escape(),
+    validationGuard,
+    next()
+]

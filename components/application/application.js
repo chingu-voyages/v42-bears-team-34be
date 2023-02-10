@@ -29,7 +29,8 @@ async function postMakeApplication(req,res,next){
     
             if(application !== null){
                 return res.status(400).json({
-                    err : "User has an application pending review."
+                    err : "User has an application pending review.",
+                    code: "$PENDING_APPLICATION_EXISTS"
                 })
             }
         }
@@ -96,7 +97,7 @@ async function getApplicationById(req,res,next){
         // admin can bypass the application ownership 
         console.log("User role: "+req.auth.role)
         if("admin" !== req.auth.role){
-            console.log("We need to check abainst the id")
+            console.log("We need to check against the id")
             criteria.requestedBy = req.auth.id
         }
 
@@ -108,7 +109,7 @@ async function getApplicationById(req,res,next){
         }
 
         // we don't let the user see very single detail.
-        let result = {
+        const result = {
             requestedLoanAmount : a.requestedLoanAmount,
             numberOfInstallments: a.numberOfInstallments,
             installmentAmount   : a.installmentAmount,

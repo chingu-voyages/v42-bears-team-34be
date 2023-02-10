@@ -8,7 +8,8 @@ import {
     loginCredentialsValidator,
     adminCreationGuard,
     adminCreationValidator,
-    adminAuthTokenGuard 
+    adminAuthTokenGuard, 
+    idValidator
 } from './validators.js';
 
 // schemas
@@ -16,6 +17,7 @@ import User from "../../schemas/user.js"
 
 // services
 import "../../services/emailer.js"
+import { protectedRoute } from '../../middleware/protectedRoute.js';
 
 // create account
 // this should schedule an "activate your account" email.
@@ -28,7 +30,8 @@ async function postSignUp(req,res){
         const userAlreadyExists = await checkIfUserExistsInDb(req.body.email);
         if (userAlreadyExists) {
             return res.status(400).json({
-                err: `$EMAIL_EXISTS ${req.body.email} already exists.`
+                err: `${req.body.email} already exists.`,
+                code: "$EMAIL_EXISTS"
             })
         }
 
@@ -109,7 +112,7 @@ async function postLogin(req,res){
     
         // user can be null.
         if (!user)
-            return res.status(401).json({ err: "User not found or password is incorrect."})
+            return res.status(401).json({ err: "User not found or password is incorrect.", code: "$INVALID_USER_OR_PASSWORD"})
 
         // compare hashedPassword with the provided password
         let result = await bcrypt.compare(req.body.password, user.hashedPassword)
@@ -123,7 +126,7 @@ async function postLogin(req,res){
         // user actually has an admin status. If they don't, throw
         if (req.body.isAdmin === "true") {
             if (role !== "admin") {
-                return res.status(401).json({err: "Access is denied due to invalid access level" })
+                return res.status(401).json({err: "Access is denied due to invalid access level", code: "$INVALID_USER_OR_PASSWORD" })
             }
         }
 
@@ -190,6 +193,44 @@ function postRefresh(req,res){
     }
 }
 
+/**
+ * Mainly used for fetching the user profile associated with the application.
+ */
+async function getUserById(req, res, next) {
+    // For non-admins, you can get your own user info by ID
+    // Only admins can get other users by id
+    try {
+        const { id } = req.params;
+        if (req.auth.role !== "admin") {
+            if (id !== req.auth.id) {
+                return res.status(401).json({
+                    err: 'Invalid request. Invalid access.'
+                })
+            }
+        }
+    
+        const user = await User.findById(id).exec();
+        if (!user) return res.status(404).json({
+            err: `User not found with id ${id}`
+        })
+        return res.status(200).send({
+            id: user._id.toString(),
+            address: {
+                ...user.address,
+            },
+            dateSignedUp: user.dateSignedUp,
+            firstName : user.firstName,
+            lastName: user.lastName,
+            dateOfBirth: user.dateOfBirth,
+            email: user.email,
+            applicantGender: user.applicantGender
+        })
+
+    } catch (error) {
+        return next(error)
+    }
+}
+
 // For checking if the JWT is readable
 function getProfile(req,res){
     // middleware should have placed the 
@@ -250,7 +291,8 @@ export default function(app){
     app.post("/auth/refresh"        , postRefresh)
     app.get ("/auth/profile"        , getProfile)
     app.get ("/auth/verify/:tok"    , getVerify)
-    app.post("/auth/forgotpassword/", postForgotPassword)
+    app.post("/auth/forgotpassword" , postForgotPassword)
+    app.get("/auth/user/:id"        , protectedRoute, idValidator              , getUserById)
 
     console.log("Authentication component registered.")
 }
