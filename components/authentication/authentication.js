@@ -41,7 +41,7 @@ async function postSignUp(req,res){
             hashedPassword  : hashedPassword,
             dateOfBirth     : new Date(req.body.dateOfBirth),
             dateSignedUp    : new Date(Date.now()),
-            gender          : req.body.gender,
+            applicantGender : req.body.applicantGender,
             active          : true  // make this one false when email integration is functional 
         })
 
@@ -56,6 +56,7 @@ async function postSignUp(req,res){
             msg : "Your account has been created, but it's pending activation. (not really, just login)"
         })
     }catch(e){
+        console.error(e.error)
         res.status(500).json({
             msg : "Something went wrong: "+ e.message
         })
@@ -77,7 +78,7 @@ async function postCreateAdmin(req,res){
             hashedPassword  : hashedPassword,
             dateSignedUp    : new Date(Date.now()), // not necessary for admin
             dateOfBirth     : new Date(Date.now()), // not necessary for admin
-            gender          : req.body.gender,
+            applicantGender : req.body.applicantGender,
             active          : true
         })
         newUser.validateSync()
