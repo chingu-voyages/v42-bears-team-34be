@@ -35,6 +35,15 @@ async function postSignUp(req,res){
             })
         }
 
+        const addressInfo = {
+            streetAddress    : req.body.streetAddress,
+            unitNumber       : req.body.unitNumber,
+            city             : req.body.city,
+            postalCode       : req.body.postalCode,
+            province         : req.body.province,
+            additionalAddress: req.body.additionalAddress
+        }
+
         const hashedPassword = await bcrypt.hash(req.body.password,10);
         const newUser = new User({
             role            : 'user',
@@ -45,6 +54,7 @@ async function postSignUp(req,res){
             dateOfBirth     : new Date(req.body.dateOfBirth),
             dateSignedUp    : new Date(Date.now()),
             applicantGender : req.body.applicantGender,
+            address         : addressInfo,
             active          : true  // make this one false when email integration is functional 
         })
 
@@ -197,7 +207,7 @@ function postRefresh(req,res){
  * Mainly used for fetching the user profile associated with the application.
  */
 async function getUserById(req, res, next) {
-    // For non-admins, you can get your own user info by ID
+    // For non-admins, you can get only your own user info by ID
     // Only admins can get other users by id
     try {
         const { id } = req.params;

@@ -28,10 +28,10 @@ const UserSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId, ref: 'Application'
     }],
     address : {
-        streetNumber      : {type : String},
-        streetName        : {type : String},
-        unitNumber        : {type : String},
-        additionalAddress : {type : String},
+        streetAddress     : {type : String},
+        unitNumber        : {type: String},
+        additionalAddress : {type: String},
+        city              : {type: String},
         postalCode        : {type : String},
         province          : {type : String}
     },
