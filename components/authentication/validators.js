@@ -19,6 +19,16 @@ export const userProfileValidator = [
             return dayjs(dateObject, "MM-DD-YYYY", true).isValid()
         }
     ),
+    body("city").exists().trim().escape(),
+    body("streetAddress").exists().trim().escape(),
+    body("postalCode").exists().trim().escape().custom((postalCode) => {
+        // Validate the postal code format
+        const regEx = /^[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][ -]?\d[ABCEGHJ-NPRSTV-Z]\d$/i;
+        return regEx.test(postalCode)
+    }).customSanitizer((value) => value.toUpperCase()),
+    body("province").exists().trim().escape(),
+    body("additionalAddress").optional().trim().escape(),
+    body("unitNumber").optional().trim().escape(),
     validationGuard
 ]
 
