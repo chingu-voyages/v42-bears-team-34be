@@ -78,7 +78,8 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
                 numberOfInstallments: a.numberOfInstallments,
                 installmentAmount   : a.installmentAmount,
                 loanPurpose         : a.loanPurpose,
-                status              : a.status
+                status              : a.status,
+                requestedBy         : a.requestedBy
             })
         )
         res.status(200).json(filteredApplications).exec()
@@ -115,7 +116,8 @@ async function getApplicationById(req,res,next){
             installmentAmount   : a.installmentAmount,
             loanPurpose         : a.loanPurpose,
             status              : a.status,
-            requestedAt         : a.createdAt
+            requestedAt         : a.createdAt,
+            requestedBy         : a.requestedBy
         }
 
         if("rejected" === a.status){
