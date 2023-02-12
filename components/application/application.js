@@ -74,6 +74,7 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
         const filteredApplications = userApplications.map( a => ({
                 // should we wend this one out?
                 id                  : a.id,
+                applicantIncome     : a.applicantIncome,
                 requestedLoanAmount : a.requestedLoanAmount,
                 numberOfInstallments: a.numberOfInstallments,
                 installmentAmount   : a.installmentAmount,
@@ -96,7 +97,6 @@ async function getApplicationById(req,res,next){
         }
 
         // admin can bypass the application ownership 
-        console.log("User role: "+req.auth.role)
         if("admin" !== req.auth.role){
             console.log("We need to check against the id")
             criteria.requestedBy = req.auth.id
@@ -111,6 +111,7 @@ async function getApplicationById(req,res,next){
 
         // we don't let the user see very single detail.
         const result = {
+            applicantIncome     : a.applicantIncome,
             requestedLoanAmount : a.requestedLoanAmount,
             numberOfInstallments: a.numberOfInstallments,
             installmentAmount   : a.installmentAmount,
