@@ -4,7 +4,7 @@ import { protectedRoute } from "../../middleware/protectedRoute.js"
 import { linkPublicTokenValidator } from '../authentication/validators.js';
 import User from '../../schemas/user.js';
 import { adminRoute } from '../../middleware/adminRoute.js';
-import { userIdValidator } from './validators.js';
+import { financialDetailsQueryValidator, userIdValidator } from './validators.js';
 
 // values are initialized when this component
 // is associated with an express context
@@ -96,7 +96,10 @@ async function postSetPublicToken(req,res) {
   }
 }
 
-/* This should only be accessed by admins. Get financial details by userID
+/* This can only be accessed by admins. Get financial details by userID
+* We should allow the requestor to specify query parameters for the type of financial details they want, ie. liabilities, transactions etc
+* for example GET /plaid/financial_details/:id?=category=liabilities&category=investments (id refers to userId)
+* If there are multiple categories in the URL, express transforms req.query.category to an array
 */
 async function getFinancialDetailsFromPlaidByUserId(req,res){
   try{
@@ -106,10 +109,12 @@ async function getFinancialDetailsFromPlaidByUserId(req,res){
       => this should be a scheduled task.
     */
     const { id } = req.params;
+    const { category } = req.query;
     const user = await User.findById(id).exec()
     if (!user) {
       return userNotFound(res)
     }
+
     const { plaidAccessToken, plaidItemId } = user;
     if (!plaidAccessToken) {
       return res.status(400).json({
@@ -161,8 +166,14 @@ export default function(app){
   // create a client
   plaidAPI.client = new PlaidApi(plaidAPI.configuration);
 
-  app.get ('/plaid/get_token', protectedRoute, getLinkToken);
-  app.get('/plaid/financial_details/:id', protectedRoute, adminRoute, userIdValidator, getFinancialDetailsFromPlaidByUserId)
+  app.get ('/plaid/get_token', protectedRoute, getLinkToken)
+  app.get('/plaid/financial_details/:id',
+    protectedRoute,
+    adminRoute,
+    userIdValidator,
+    financialDetailsQueryValidator,
+    getFinancialDetailsFromPlaidByUserId
+  )
   app.post('/plaid/set_public_token', protectedRoute, linkPublicTokenValidator, postSetPublicToken)
 
   console.log("Plaid component registered.")
