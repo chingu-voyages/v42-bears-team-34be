@@ -4,6 +4,7 @@ import { protectedRoute } from "../../middleware/protectedRoute.js"
 import { linkPublicTokenValidator } from '../authentication/validators.js';
 import User from '../../schemas/user.js';
 import { adminRoute } from '../../middleware/adminRoute.js';
+import { userIdValidator } from './validators.js';
 
 // values are initialized when this component
 // is associated with an express context
@@ -95,19 +96,17 @@ async function postSetPublicToken(req,res) {
   }
 }
 
-/* This may need to be re-factored to get more specific financial details 
-  other than liabilities. This method should be called from the front-end 
-  by an applicant.
+/* This should only be accessed by admins. Get financial details by userID
 */
-async function getGetApplicantFinancialDetails(req,res){
+async function getFinancialDetailsFromPlaidByUserId(req,res){
   try{
     /* Things to consider for future iterations:
       => what if plaid doesn't respond?
       => what if the server dies?
       => this should be a scheduled task.
     */
-
-    const user = await User.findById(req.auth.id).exec()
+    const { id } = req.params;
+    const user = await User.findById(id).exec()
     if (!user) {
       return userNotFound(res)
     }
@@ -163,7 +162,7 @@ export default function(app){
   plaidAPI.client = new PlaidApi(plaidAPI.configuration);
 
   app.get ('/plaid/get_token', protectedRoute, getLinkToken);
-  app.get('/plaid/get_financial_details', protectedRoute, adminRoute, getGetApplicantFinancialDetails)
+  app.get('/plaid/financial_details/:id', protectedRoute, adminRoute, userIdValidator, getFinancialDetailsFromPlaidByUserId)
   app.post('/plaid/set_public_token', protectedRoute, linkPublicTokenValidator, postSetPublicToken)
 
   console.log("Plaid component registered.")
