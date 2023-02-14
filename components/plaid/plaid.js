@@ -1,9 +1,11 @@
 
-import { Configuration, PlaidApi, Products, PlaidEnvironments } from 'plaid';
+import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
 import { protectedRoute } from "../../middleware/protectedRoute.js"
 import { linkPublicTokenValidator } from '../authentication/validators.js';
 import User from '../../schemas/user.js';
-import Application from '../../schemas/application.js';
+import { adminRoute } from '../../middleware/adminRoute.js';
+import { financialDetailsQueryValidator, userIdValidator } from './validators.js';
+
 // values are initialized when this component
 // is associated with an express context
 const plaidAPI = {
@@ -94,22 +96,25 @@ async function postSetPublicToken(req,res) {
   }
 }
 
-/* This may need to be re-factored to get more specific financial details 
-  other than liabilities. This method should be called from the front-end 
-  by an applicant.
+/* This can only be accessed by admins. Get financial details by userID
+* We should allow the requestor to specify query parameters for the type of financial details they want, ie. liabilities, transactions etc
+* for example GET /plaid/financial_details/:id?=category=liabilities&category=investments (id refers to userId)
+* If there are multiple categories in the URL, express transforms req.query.category to an array
 */
-async function getGetApplicantFinancialDetails(req,res){
+async function getFinancialDetailsFromPlaidByUserId(req,res){
   try{
     /* Things to consider for future iterations:
       => what if plaid doesn't respond?
       => what if the server dies?
       => this should be a scheduled task.
     */
-
-    const user = await User.findById(req.auth.id).exec()
+    const { id } = req.params;
+    const { category } = req.query;
+    const user = await User.findById(id).exec()
     if (!user) {
       return userNotFound(res)
     }
+
     const { plaidAccessToken, plaidItemId } = user;
     if (!plaidAccessToken) {
       return res.status(400).json({
@@ -123,25 +128,9 @@ async function getGetApplicantFinancialDetails(req,res){
       access_token: user.plaidAccessToken
     });
 
-    const newApplication = await saveUserApplication(
-      user,  
-      financialLiabilitiesRequest.data,
-      {
-        amount: 100,
-        reason: "loan",
-        description: "new loan",
-        payments: 0,
-        paymentAmount: 100
-      }
-    )
-
-    /* This is just for testing. We don't need to send this data back to the front end, except for a 200 response to
-      let front end know that financial data was obtained
-      We should save the data into the applications collection and updated the user document 
-    */
     res.status(200).json({
       itemId : plaidItemId,
-      application: newApplication // This is just for testing. Front end should re-request the data on the confirmation page
+      data: financialLiabilitiesRequest.data
     })
 
   }catch(e){
@@ -150,36 +139,6 @@ async function getGetApplicantFinancialDetails(req,res){
       err : `Something bad happened: ${e.message}`
     })
   }  
-}
-
-
-/**
- * Handles single or multi-application mode and saves the application and user documents
- * @param {UserDocument} userDocument MongoDB document instance
- * @param {} financialData The raw response from the plaid client request
- * @param {{ amount: number, reason: string, description: string, payments: number, paymentAmount: number }} applicationData The rest of the stuff from the user's application that is pertinent to the loan request, but not obtained by Plaid
- * @returns {Promise<ApplicationDocument>} created application
- */
-async function saveUserApplication (userDocument, financialData, applicationData) {
-  // We'll only support liabilities for now, so this will save specifically to that section of the financial data
-  const financialApplication = new Application({
-    ...applicationData,
-    requestedBy: userDocument._id,
-    status: "new",
-    financialData: {
-      liabilities: financialData
-    }
-  })
-  
-  const createdApplication = await financialApplication.save();
-  
-  if (allowMultipleApplications) {
-    userDocument.applications.push(createdApplication._id);
-  } else {
-    userDocument.applications = [createdApplication._id]
-  }
-  await userDocument.save();
-  return createdApplication;
 }
 
 const userNotFound = (res) => {
@@ -207,8 +166,14 @@ export default function(app){
   // create a client
   plaidAPI.client = new PlaidApi(plaidAPI.configuration);
 
-  app.get ('/plaid/get_token', protectedRoute, getLinkToken);
-  app.get('/plaid/get_financial_details', protectedRoute, getGetApplicantFinancialDetails)
+  app.get ('/plaid/get_token', protectedRoute, getLinkToken)
+  app.get('/plaid/financial_details/:id',
+    protectedRoute,
+    adminRoute,
+    userIdValidator,
+    financialDetailsQueryValidator,
+    getFinancialDetailsFromPlaidByUserId
+  )
   app.post('/plaid/set_public_token', protectedRoute, linkPublicTokenValidator, postSetPublicToken)
 
   console.log("Plaid component registered.")

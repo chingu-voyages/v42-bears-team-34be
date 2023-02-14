@@ -1,6 +1,9 @@
 // validator
 import {  protectedRoute } from '../../middleware/protectedRoute.js';
 import {  adminRoute }     from '../../middleware/adminRoute.js';
+import { ApplicationModel } from '../../schemas/application.js';
+
+import { ApplicationStatus } from '../../schemas/application-status.js';
 
 // component level validators
 import { 
@@ -8,9 +11,6 @@ import {
     userApplicationQueryValidator,
     adminApplicationQueryValidator
 } from './validators.js';
-
-// schemas
-import  {Application, ApplicationStatus} from "../../schemas/application.js"
 
 // services
 import "../../services/emailer.js"
@@ -22,26 +22,28 @@ async function postMakeApplication(req,res,next){
 
     try{
         if(process.env.ALLOW_MULTIPLE_APPLICATIONS !== "true"){
-            let application = await Application.findOne({
+            let application = await ApplicationModel.findOne({
                 requestedBy  : req.auth.id,
                 status       : ApplicationStatus.Pending
             }).exec()
     
             if(application !== null){
                 return res.status(400).json({
-                    err : "User has an application pending review."
+                    err : "User has an application pending review.",
+                    code: "$PENDING_APPLICATION_EXISTS"
                 })
             }
         }
 
-        let application = new Application({
-            amount       : parseFloat(req.body.amount),
-            payments     : parseInt  (req.body.payments),
-            paymentAmount: parseFloat(req.body.paymentAmount),
-            reason       : req.body.reason,
-            description  : req.body.description,
-            requestedBy  : req.auth.id,
-            status       : ApplicationStatus.Pending
+        const application = await ApplicationModel.create({
+            requestedLoanAmount : parseFloat(req.body.requestedLoanAmount),
+            numberOfInstallments: parseInt  (req.body.numberOfInstallments),
+            installmentAmount   : parseFloat(req.body.installmentAmount),
+            applicantOccupation : req.body.applicantOccupation,
+            applicantIncome     : parseFloat(req.body.applicantIncome),
+            loanPurpose         : req.body.loanPurpose,
+            requestedBy         : req.auth.id,
+            status              : ApplicationStatus.Pending
         })
 
         // client made an invalid request
@@ -65,22 +67,23 @@ async function postMakeApplication(req,res,next){
 
 async function getApplicationsForAuthenticatedUser(req,res,next){
     try{
-        let applications = await Application.find({
+        const userApplications = await ApplicationModel.find({
             requestedBy : req.auth.id
-        })
+        }).exec()
         // there are some details which we cannot provide to the user
-        applications = applications.map( a => ({
+        const filteredApplications = userApplications.map( a => ({
                 // should we wend this one out?
-                id            : a.id,
-                amount        : a.amount,
-                payments      : a.payments,
-                paymentAmount : a.paymentAmount,
-                reason        : a.reason,
-                description   : a.description,
-                status        : a.status
+                id                  : a.id,
+                applicantIncome     : a.applicantIncome,
+                requestedLoanAmount : a.requestedLoanAmount,
+                numberOfInstallments: a.numberOfInstallments,
+                installmentAmount   : a.installmentAmount,
+                loanPurpose         : a.loanPurpose,
+                status              : a.status,
+                requestedBy         : a.requestedBy
             })
         )
-        res.status(200).json(applications)
+        res.status(200).json(filteredApplications);
     }catch(e){
         return next(e)
     }
@@ -94,13 +97,12 @@ async function getApplicationById(req,res,next){
         }
 
         // admin can bypass the application ownership 
-        console.log("User role: "+req.auth.role)
         if("admin" !== req.auth.role){
-            console.log("We need to check abainst the id")
+            console.log("We need to check against the id")
             criteria.requestedBy = req.auth.id
         }
 
-        let a = await Application.findOne(criteria)
+        const a = await ApplicationModel.findOne(criteria).exec()
         if(!a){
             return next(
                 new Error("No such application for the current user.")
@@ -108,14 +110,15 @@ async function getApplicationById(req,res,next){
         }
 
         // we don't let the user see very single detail.
-        let result = {
-            amount        : a.amount,
-            payments      : a.payments,
-            paymentAmount : a.paymentAmount,
-            reason        : a.reason,
-            description   : a.description,
-            status        : a.status,
-            requestedAt   : a.createdAt
+        const result = {
+            applicantIncome     : a.applicantIncome,
+            requestedLoanAmount : a.requestedLoanAmount,
+            numberOfInstallments: a.numberOfInstallments,
+            installmentAmount   : a.installmentAmount,
+            loanPurpose         : a.loanPurpose,
+            status              : a.status,
+            requestedAt         : a.createdAt,
+            requestedBy         : a.requestedBy
         }
 
         if("rejected" === a.status){
@@ -135,17 +138,17 @@ async function getApplicationById(req,res,next){
 async function postCancelApplication(req,res,next){
     try{
         // find application by id and user
-        let criteria = {
+        const criteria = {
             _id : req.params.id,
             status : ApplicationStatus.Pending
         }
 
         // admin can bypass the application ownership 
         if("admin" !== req.auth.role){
-            criteria.requestedBy == req.auth.id
+            criteria[requestedBy] = req.auth.id
         }
 
-        let application = await Application.findOne(criteria)
+        const application = await ApplicationModel.findOne(criteria).exec()
         if(!application){
             return next(
                 new Error("No pending application with that id for the current user.")
@@ -169,7 +172,7 @@ async function postCancelApplication(req,res,next){
 
 
 async function adminGetAllApplications(req,res){
-    let applications = await Application.find()
+    const applications = await ApplicationModel.find().exec();
     if(!applications){
         return next(
             new Error("No applications.")

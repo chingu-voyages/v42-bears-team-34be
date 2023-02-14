@@ -1,4 +1,4 @@
-import { body }  from 'express-validator';
+import { body, param }  from 'express-validator';
 import dayjs from 'dayjs';
 import validationGuard from '../../middleware/validationGuard.js'
 
@@ -8,6 +8,9 @@ export const userProfileValidator = [
     body('firstName').exists().trim().escape(),
     body('lastName').exists().trim().escape(),
     body('password').exists(),
+    body('applicantGender').trim().escape().custom((value) => {
+        return ["male", "female", "other"].includes(value);
+    }),
     body('dateOfBirth').exists().custom(
         date =>{
             // maybe check if the person is at least X years old where X is how old you need
@@ -16,6 +19,16 @@ export const userProfileValidator = [
             return dayjs(dateObject, "MM-DD-YYYY", true).isValid()
         }
     ),
+    body("city").exists().trim().escape(),
+    body("streetAddress").exists().trim().escape(),
+    body("postalCode").exists().trim().escape().custom((postalCode) => {
+        // Validate the postal code format
+        const regEx = /^[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][ -]?\d[ABCEGHJ-NPRSTV-Z]\d$/i;
+        return regEx.test(postalCode)
+    }).customSanitizer((value) => value.toUpperCase()),
+    body("province").exists().trim().escape(),
+    body("additionalAddress").optional().trim().escape(),
+    body("unitNumber").optional().trim().escape(),
     validationGuard
 ]
 
@@ -30,6 +43,9 @@ export const adminCreationValidator = [
     body('firstName').exists().trim().escape(),
     body('lastName').exists().trim().escape(),
     body('password').exists(),
+    body('applicantGender').trim().escape().custom((value) => {
+        return ["male", "female", "other"].includes(value);
+    }),
     validationGuard,
 ]
 
@@ -73,3 +89,9 @@ export const adminAuthTokenGuard = (req, res, next) => {
         })
     }
 }
+
+export const idValidator = (req, res, next) => [
+    param('id').isHexadecimal().trim().isLength({min: 24, max: 24}).escape(),
+    validationGuard,
+    next()
+]

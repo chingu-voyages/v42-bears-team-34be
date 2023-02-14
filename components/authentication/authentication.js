@@ -8,7 +8,8 @@ import {
     loginCredentialsValidator,
     adminCreationGuard,
     adminCreationValidator,
-    adminAuthTokenGuard 
+    adminAuthTokenGuard, 
+    idValidator
 } from './validators.js';
 
 // schemas
@@ -16,11 +17,33 @@ import User from "../../schemas/user.js"
 
 // services
 import "../../services/emailer.js"
+import { protectedRoute } from '../../middleware/protectedRoute.js';
 
 // create account
 // this should schedule an "activate your account" email.
 async function postSignUp(req,res){
     try{
+
+        /* First we should safely check if the e-mail already exists in our db
+            If it does, we can return a 400 error and prompt the client to log in
+        */
+        const userAlreadyExists = await checkIfUserExistsInDb(req.body.email);
+        if (userAlreadyExists) {
+            return res.status(400).json({
+                err: `${req.body.email} already exists.`,
+                code: "$EMAIL_EXISTS"
+            })
+        }
+
+        const addressInfo = {
+            streetAddress    : req.body.streetAddress,
+            unitNumber       : req.body.unitNumber,
+            city             : req.body.city,
+            postalCode       : req.body.postalCode,
+            province         : req.body.province,
+            additionalAddress: req.body.additionalAddress
+        }
+
         const hashedPassword = await bcrypt.hash(req.body.password,10);
         const newUser = new User({
             role            : 'user',
@@ -30,6 +53,8 @@ async function postSignUp(req,res){
             hashedPassword  : hashedPassword,
             dateOfBirth     : new Date(req.body.dateOfBirth),
             dateSignedUp    : new Date(Date.now()),
+            applicantGender : req.body.applicantGender,
+            address         : addressInfo,
             active          : true  // make this one false when email integration is functional 
         })
 
@@ -44,6 +69,7 @@ async function postSignUp(req,res){
             msg : "Your account has been created, but it's pending activation. (not really, just login)"
         })
     }catch(e){
+        console.error(e.error)
         res.status(500).json({
             msg : "Something went wrong: "+ e.message
         })
@@ -65,6 +91,7 @@ async function postCreateAdmin(req,res){
             hashedPassword  : hashedPassword,
             dateSignedUp    : new Date(Date.now()), // not necessary for admin
             dateOfBirth     : new Date(Date.now()), // not necessary for admin
+            applicantGender : req.body.applicantGender,
             active          : true
         })
         newUser.validateSync()
@@ -95,7 +122,7 @@ async function postLogin(req,res){
     
         // user can be null.
         if (!user)
-            return res.status(401).json({ err: "User not found or password is incorrect."})
+            return res.status(401).json({ err: "User not found or password is incorrect.", code: "$INVALID_USER_OR_PASSWORD"})
 
         // compare hashedPassword with the provided password
         let result = await bcrypt.compare(req.body.password, user.hashedPassword)
@@ -109,7 +136,7 @@ async function postLogin(req,res){
         // user actually has an admin status. If they don't, throw
         if (req.body.isAdmin === "true") {
             if (role !== "admin") {
-                return res.status(401).json({err: "Access is denied due to invalid access level" })
+                return res.status(401).json({err: "Access is denied due to invalid access level", code: "$INVALID_USER_OR_PASSWORD" })
             }
         }
 
@@ -176,6 +203,44 @@ function postRefresh(req,res){
     }
 }
 
+/**
+ * Mainly used for fetching the user profile associated with the application.
+ */
+async function getUserById(req, res, next) {
+    // For non-admins, you can get only your own user info by ID
+    // Only admins can get other users by id
+    try {
+        const { id } = req.params;
+        if (req.auth.role !== "admin") {
+            if (id !== req.auth.id) {
+                return res.status(401).json({
+                    err: 'Invalid request. Invalid access.'
+                })
+            }
+        }
+    
+        const user = await User.findById(id).exec();
+        if (!user) return res.status(404).json({
+            err: `User not found with id ${id}`
+        })
+        return res.status(200).send({
+            id: user._id.toString(),
+            address: {
+                ...user.address,
+            },
+            dateSignedUp: user.dateSignedUp,
+            firstName : user.firstName,
+            lastName: user.lastName,
+            dateOfBirth: user.dateOfBirth,
+            email: user.email,
+            applicantGender: user.applicantGender
+        })
+
+    } catch (error) {
+        return next(error)
+    }
+}
+
 // For checking if the JWT is readable
 function getProfile(req,res){
     // middleware should have placed the 
@@ -212,6 +277,23 @@ function postForgotPassword(req,res){
     })
 }
 
+/**
+ * 
+ * @param {string} email
+ * @returns {Promise<boolean>}
+ */
+async function checkIfUserExistsInDb (email) {
+    try {
+        const user = await User.findOne({ email: email });
+        if (user) return true;
+        return false;
+    } catch (error) {
+        return res.status(500).json({
+            msg: "Encountered a server error completing this request"
+        })
+    }
+}
+
 export default function(app){
     app.post("/auth/signup"         , userProfileValidator     , postSignUp)
     app.post("/auth/admin-create"   , adminCreationGuard, adminAuthTokenGuard, adminCreationValidator, postCreateAdmin)
@@ -219,7 +301,8 @@ export default function(app){
     app.post("/auth/refresh"        , postRefresh)
     app.get ("/auth/profile"        , getProfile)
     app.get ("/auth/verify/:tok"    , getVerify)
-    app.post("/auth/forgotpassword/", postForgotPassword)
+    app.post("/auth/forgotpassword" , postForgotPassword)
+    app.get("/auth/user/:id"        , protectedRoute, idValidator              , getUserById)
 
     console.log("Authentication component registered.")
 }
