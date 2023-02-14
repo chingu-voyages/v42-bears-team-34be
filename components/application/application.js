@@ -83,7 +83,7 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
                 requestedBy         : a.requestedBy
             })
         )
-        res.status(200).json(filteredApplications).exec()
+        res.status(200).json(filteredApplications);
     }catch(e){
         return next(e)
     }
