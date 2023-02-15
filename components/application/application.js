@@ -181,8 +181,25 @@ async function adminGetAllApplications(req,res){
         )
     }
 
+    const mapped = applications.map((app) => {
+       return {
+            id: app._id.toString(),
+            requestedLoanAmount: app.requestedLoanAmount,
+            loanPurpose: app.loanPurpose,
+            numberOfInstallments: app.numberOfInstallments,
+            installmentAmount: app.installmentAmount,
+            applicantIncome: app.applicantIncome,
+            applicantOccupation: app.applicantOccupation,
+            status: app.status,
+            requestedBy: app.requestedBy.toString(),
+            createdAt: app.createdAt,
+            updatedAt: app.updatedAt
+        }
+    })
+
+    console.info(mapped)
     res.status(200).json({
-        applications : applications
+        applications : mapped
     })
 }
 
