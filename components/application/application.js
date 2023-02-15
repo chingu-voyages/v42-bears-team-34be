@@ -9,7 +9,8 @@ import { ApplicationStatus } from '../../schemas/application-status.js';
 import { 
     applicationValidator,
     userApplicationQueryValidator,
-    adminApplicationQueryValidator
+    adminApplicationQueryValidator,
+    adminApplicationRejectValidator,
 } from './validators.js';
 
 // services
@@ -58,6 +59,7 @@ async function postMakeApplication(req,res,next){
 
         res.status(200).json({
             msg  : "Application received.",
+            id   : application.id
         })
     }catch(e){
         return next(e)
@@ -72,7 +74,6 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
         }).exec()
         // there are some details which we cannot provide to the user
         const filteredApplications = userApplications.map( a => ({
-                // should we wend this one out?
                 id                  : a.id,
                 applicantIncome     : a.applicantIncome,
                 requestedLoanAmount : a.requestedLoanAmount,
@@ -80,7 +81,8 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
                 installmentAmount   : a.installmentAmount,
                 loanPurpose         : a.loanPurpose,
                 status              : a.status,
-                requestedBy         : a.requestedBy
+                requestedBy         : a.requestedBy,
+                updatedAt           : a.updatedAt
             })
         )
         res.status(200).json(filteredApplications);
@@ -98,7 +100,6 @@ async function getApplicationById(req,res,next){
 
         // admin can bypass the application ownership 
         if("admin" !== req.auth.role){
-            console.log("We need to check against the id")
             criteria.requestedBy = req.auth.id
         }
 
@@ -118,7 +119,8 @@ async function getApplicationById(req,res,next){
             loanPurpose         : a.loanPurpose,
             status              : a.status,
             requestedAt         : a.createdAt,
-            requestedBy         : a.requestedBy
+            requestedBy         : a.requestedBy,
+            updatedAt           : a.updatedAt
         }
 
         if("rejected" === a.status){
@@ -179,22 +181,69 @@ async function adminGetAllApplications(req,res){
         )
     }
 
+    const mapped = applications.map((app) => {
+       return {
+            id: app._id.toString(),
+            requestedLoanAmount: app.requestedLoanAmount,
+            loanPurpose: app.loanPurpose,
+            numberOfInstallments: app.numberOfInstallments,
+            installmentAmount: app.installmentAmount,
+            applicantIncome: app.applicantIncome,
+            applicantOccupation: app.applicantOccupation,
+            status: app.status,
+            requestedBy: app.requestedBy.toString(),
+            createdAt: app.createdAt,
+            updatedAt: app.updatedAt
+        }
+    })
+
     res.status(200).json({
-        applications : applications
+        applications : mapped
     })
 }
 
-function adminPostApproveApplication(req,res){
-    res.status(200).json({
-        msg : "Approving application "+req.params.id
-    })
+async function adminPatchApproveApplication(req,res,next){
+    try {
+        const { id } = req.params;
+
+        const app = await ApplicationModel.findById(id).exec();
+        if (!app) return res.status(404).send({ err: `application with id ${id} not found`})
+        app.status = "approved"
+        app.evaluatedBy = req.auth.id
+
+        await app.save();
+        res.status(201).json({
+            msg : "Approving application "+req.params.id,
+            id
+        })
+    } catch (e) {
+        next(e)
+    }
 }
 
-function adminPostRejectApplication(req,res){
-    res.status(200).json({
-        msg    : "Rejecting application "+req.params.id,
-        reason : req.body.reason
-    })
+
+async function adminPatchRejectApplication(req,res,next){
+    try {
+        const { reason } = req.body;
+        const { id } = req.params;
+        // Find the application and set the rejection status and reason
+        const app = await ApplicationModel.findById(id).exec()
+
+        if (!app) return res.status(404).json({ err: `application with id ${id} not found`});
+
+        app.status = "rejected";
+        app.rejectedReason = reason ? reason : "Application was rejected.";
+        app.evaluatedBy = req.auth.id
+
+        await app.save();
+        res.status(201).json({
+            msg    : `Rejecting application ${id}`,
+            reason: reason || "Application was rejected",
+            id,
+        })
+    } catch (e) {
+        return next(e)
+    }
 }
 
 export default function(app){
@@ -206,8 +255,8 @@ export default function(app){
 
     // administrative procedures
     app.get ("/admin/application/all"        , adminRoute                    , adminGetAllApplications    )
-    app.post("/admin/application/approve/:id", adminApplicationQueryValidator, adminPostApproveApplication)
-    app.post("/admin/application/reject/:id" , adminApplicationQueryValidator, adminPostRejectApplication )
+    app.patch("/admin/application/approve/:id", adminApplicationQueryValidator, adminPatchApproveApplication)
+    app.patch("/admin/application/reject/:id" , adminApplicationQueryValidator, adminApplicationRejectValidator,  adminPatchRejectApplication )
 
     console.log("Application component registered.")
 }

@@ -24,9 +24,6 @@ const UserSchema = new mongoose.Schema({
     applicantGender    : {
         type: String, required: true
     },
-    applications : [{
-        type: mongoose.Schema.Types.ObjectId, ref: 'Application'
-    }],
     address : {
         streetAddress     : {type : String},
         unitNumber        : {type: String},
