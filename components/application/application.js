@@ -197,7 +197,6 @@ async function adminGetAllApplications(req,res){
         }
     })
 
-    console.info(mapped)
     res.status(200).json({
         applications : mapped
     })
