@@ -100,7 +100,6 @@ async function getApplicationById(req,res,next){
 
         // admin can bypass the application ownership 
         if("admin" !== req.auth.role){
-            console.log("We need to check against the id")
             criteria.requestedBy = req.auth.id
         }
 
