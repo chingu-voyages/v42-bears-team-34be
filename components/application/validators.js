@@ -27,3 +27,8 @@ export const adminApplicationQueryValidator = [
     param('id').isHexadecimal().trim().isLength({min: 24, max: 24}).escape(),
     validationGuard
 ]
+
+export const adminApplicationRejectValidator = [
+    body("reason").exists().trim().escape(),
+    validationGuard,
+]
