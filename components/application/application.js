@@ -74,7 +74,6 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
         }).exec()
         // there are some details which we cannot provide to the user
         const filteredApplications = userApplications.map( a => ({
-                // should we wend this one out?
                 id                  : a.id,
                 applicantIncome     : a.applicantIncome,
                 requestedLoanAmount : a.requestedLoanAmount,
@@ -82,7 +81,8 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
                 installmentAmount   : a.installmentAmount,
                 loanPurpose         : a.loanPurpose,
                 status              : a.status,
-                requestedBy         : a.requestedBy
+                requestedBy         : a.requestedBy,
+                updatedAt           : a.updatedAt
             })
         )
         res.status(200).json(filteredApplications);
@@ -120,7 +120,8 @@ async function getApplicationById(req,res,next){
             loanPurpose         : a.loanPurpose,
             status              : a.status,
             requestedAt         : a.createdAt,
-            requestedBy         : a.requestedBy
+            requestedBy         : a.requestedBy,
+            updatedAt           : a.updatedAt
         }
 
         if("rejected" === a.status){
