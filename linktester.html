@@ -1,0 +1,185 @@
+<html>
+<!--=================================================
+    STYLES AND PAGE INSTRUCTIONS. IGNORE THIS STUFF
+    =================================================-->
+<head>
+  <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
+  <style>
+    .outer { justify-self: center; margin: 20% auto 120px auto; width: 60%; ; font-family: 'Roboto', sans-serif;} a { text-decoration: underline; } li { padding-left: 1rem;}
+  </style>
+</head>
+<body style="background-color:#B1EEFC;">
+    <div class="outer">
+      <h2>1- First we need to be logged in</h2>
+
+      Email:<br/>
+      <input type="text" id="email" /><br/>
+      Password:<br/>
+      <input type="text" id="password" /><br/>
+      <button onclick="login()">Login</button><br/>
+      JWT sent by the backend:<br/>
+      (if this is undefined, look in the console for the errors)</br>
+      <div id="jwt" style="width: 400px; word-wrap: break-word;">
+
+      </div>
+      
+      <h2>2- After we're logged in, we can get a link token from the backend.</h2>
+      <p>Use the following credentials:</p>
+      <ul>
+        <li>user_good</li>
+        <li>pass_good</li>
+        <li>1234 in the mobile verification step</li>
+      </ul>
+      <div id="link_token_display" style="width: 400px; word-wrap: break-word;">
+
+      </div>
+      <button onclick="getLinkToken()">Click here if there's a JWT above</button><br/>
+      <h2>3- Once we have this token, we can establish the Plaid Link. Click in the button below after a valid link_token is obtained.</h2>
+      <button id="link-button" style="background-color: white;border: #0A85EA;color: black;padding: 12px 32px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19)">Link Account</button>
+
+
+      <h2>4- We can now send the public_token to the backend.</h2>
+      <p>The backend will exchange that public_token for an access_token and store the access token in the user's database entry.</p>
+      <p>We can then make queries on the Plaid API with that acces_token.</p>
+      <p>NOTE: queries are billed.</p>
+      <div id="public_token_display" style="width: 400px; word-wrap: break-word;">
+
+      </div>      
+      <button onclick="getFinancialDetails()">Click here if there's a public_token above</button><br/>
+      <p>Clicking this button will call the "get_financial_details" endpoint.</p>
+      <p>The backend will send the retrieved data back, which is not something that will happen in real life.</p>
+      <p>If data is displayed here, then it means the backend has access to the user's financial details.</p>
+      <div id="financial_data_display" style="width:400px; word-wrap: break-word;"">
+      </div>
+    </div>
+    
+​
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  <script type="text/javascript">
+    let jwt = localStorage.getItem("jwt") ?? "Login to get the token" // we send this to the backend.
+    let link_token = ""   // we send this to plaid.
+    let public_token = localStorage.getItem("public_token") ?? "(link with bank account to get this)" // we send this to the backend.
+
+    $("#jwt").text(jwt)
+    $("#public_token_display").text(jwt)
+
+    $("#email").val( localStorage.getItem("email") ?? "")
+    $("#password").val( localStorage.getItem("password") ?? "")
+
+
+    function login(){
+
+      let email    = $("#email").val()
+      let password = $("#password").val()
+
+      localStorage.setItem("email",email)
+      localStorage.setItem("password",password)
+
+      let myHeaders = new Headers();
+      myHeaders.append("Content-Type", "application/x-www-form-urlencoded");
+
+      let urlencoded = new URLSearchParams();
+      console.log()
+      urlencoded.append("email", $("#email").val());
+      urlencoded.append("password", $("#password").val());
+
+      let requestOptions = {
+        method: 'POST',
+        headers: myHeaders,
+        body: urlencoded,
+        redirect: 'follow'
+      };
+
+      fetch("http://localhost:3000/auth/login", requestOptions)
+        .then(response => response.json())
+        .then(result => {
+          console.log(result)
+          jwt = result.tok
+          localStorage.setItem("jwt",jwt)
+          $("#jwt").text(jwt)
+        })
+        .catch(error => console.log('error', error));
+    }
+
+
+    function getLinkToken(){
+      var myHeaders = new Headers();
+      myHeaders.append("Authorization", "Bearer "+jwt);
+
+      var requestOptions = {
+        method: 'GET',
+        headers: myHeaders,
+        redirect: 'follow'
+      };
+
+      fetch("/plaid/get_token", requestOptions)
+        .then(response => response.json())
+        .then(result => {
+
+          // link_token will be a field within result
+          console.log(result)
+
+          // display it
+          link_token = result.link_token
+          useLinkToken(link_token)
+          $("#link_token_display").text(link_token)
+
+        })
+        .catch(error => console.log('error', error));      
+    }
+    
+    function setPublicToken(pt){
+      public_token = pt
+      localStorage.setItem("public_token",pt)
+      $("#public_token_display").text(pt)
+    }
+
+
+    function getFinancialDetails(){
+      var myHeaders = new Headers();
+      myHeaders.append("Authorization", "Bearer "+jwt);
+      myHeaders.append("Content-Type", "application/x-www-form-urlencoded");
+
+      var urlencoded = new URLSearchParams();
+      urlencoded.append("public_token", public_token);
+
+      var requestOptions = {
+        method: 'POST',
+        headers: myHeaders,
+        body: urlencoded,
+        redirect: 'follow'
+      };
+
+      fetch("/plaid/get_financial_details", requestOptions)
+        .then(response => response.text())
+        .then(result => {
+          // yeah no formatting
+          $("#financial_data_display").text( result ) // just display the raw text
+        })
+        .catch(error => console.log('error', error));
+    }
+
+    function useLinkToken(linkToken){
+      console.log("Using this: "+linkToken)
+
+      let handler = Plaid.create({
+        token: linkToken,
+        onSuccess: function(public_token, metadata) {
+          setPublicToken(public_token)
+          console.log('public token is:', public_token);
+        },
+        onExit: function(err, metadata) {
+          console.log('onexit invoked');
+        },
+        onEvent: function(eventName, metadata) {
+          console.log('event name is:', eventName);
+        }
+      });
+      $('#link-button').on('click', function(e) { handler.open() });
+    }
+  </script>
+​
+</body>
+</html>

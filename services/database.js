@@ -8,14 +8,14 @@ const db = {
             base = process.env.MONGO_BASE,
             db   = process.env.MONGO_DBNAME
         const
-            mongoUri = `mongodb+srv://${user}:${pass}@${base}/?retryWrites=true&w=majority`
+            mongoUri = `mongodb+srv://${user}:${pass}@${base}/${db}?retryWrites=true&w=majority`
 
         mongoose.set('strictQuery', false);
 
-        console.log("DB is initialized here")
+        console.log("DB is initialized here...")
 
         mongoose.connect(mongoUri).then( ()=>{
-            console.log("Connected to mongo database")
+            console.log("Connected to mongo database!")
         })
     }
 }

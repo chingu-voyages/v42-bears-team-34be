@@ -5,7 +5,11 @@ Create a .env file in the root of the project and populate it with:
 ```
 LOANAPP_PORT=(the port the server is going to listen on)
 LOANAPP_JWT_SECRET="(what the server will use to encode JWTs)"
+LOANAPP_JWT_DURATION="24h" or how long the token is supposed to be valid for.
+ADMIN_TOKEN=(this token must be present in the 'x-api-key' header to create an admin account)
 
+ALLOW_ADMIN_ACCOUNT_CREATION=(true or false to allow the admin account creation POST route to work)
+ALLOW_MULTIPLE_APPLICATIONS=(true or false - if true, applicant can have many applications associated to their ID, if false, only one. New applications will overwrite previous)
 PLAID_CLIENT_ID=(your plaid client id)
 PLAID_SECRET=(your plaid secret)
 PLAID_ENV=(either sandbox or production)
