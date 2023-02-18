@@ -32,3 +32,11 @@ export const adminApplicationRejectValidator = [
     body("reason").exists().trim().escape(),
     validationGuard,
 ]
+
+export const adminApplicationPatchStatusValidator = [
+    body("action").custom((value) => {
+        return ["mark_incomplete",
+        "mark_more_info_required", "update_reject_reason", "admin_cancel"].includes(value)
+    }),
+    body("message").optional().trim().escape()
+]
