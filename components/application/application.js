@@ -11,6 +11,7 @@ import {
     userApplicationQueryValidator,
     adminApplicationQueryValidator,
     adminApplicationRejectValidator,
+    adminApplicationPatchStatusValidator,
 } from './validators.js';
 
 // services
@@ -81,6 +82,7 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
                 installmentAmount   : a.installmentAmount,
                 loanPurpose         : a.loanPurpose,
                 status              : a.status,
+                statusMessage       : a.statusMessage,
                 requestedBy         : a.requestedBy,
                 updatedAt           : a.updatedAt
             })
@@ -118,12 +120,13 @@ async function getApplicationById(req,res,next){
             installmentAmount   : a.installmentAmount,
             loanPurpose         : a.loanPurpose,
             status              : a.status,
+            statusMessage       : a.statusMessage,
             requestedAt         : a.createdAt,
             requestedBy         : a.requestedBy,
             updatedAt           : a.updatedAt
         }
 
-        if("rejected" === a.status){
+        if(a.status === ApplicationStatus.Rejected){
             result.rejectedReason = a.rejectedReason
         }
 
@@ -191,6 +194,7 @@ async function adminGetAllApplications(req,res){
             applicantIncome: app.applicantIncome,
             applicantOccupation: app.applicantOccupation,
             status: app.status,
+            statusMessage: app.statusMessage,
             requestedBy: app.requestedBy.toString(),
             createdAt: app.createdAt,
             updatedAt: app.updatedAt
@@ -208,7 +212,7 @@ async function adminPatchApproveApplication(req,res,next){
 
         const app = await ApplicationModel.findById(id).exec();
         if (!app) return res.status(404).send({ err: `application with id ${id} not found`})
-        app.status = "approved"
+        app.status = ApplicationStatus.Approved
         app.evaluatedBy = req.auth.id
 
         await app.save();
@@ -229,10 +233,10 @@ async function adminPatchRejectApplication(req,res,next){
         // Find the application and set the rejection status and reason
         const app = await ApplicationModel.findById(id).exec()
 
-        if (!app) return res.status(404).json({ err: `application with id ${id} not found`});
+        if (!app) return res.status(404).json({ err: `application with id ${id} not found`})
 
-        app.status = "rejected";
-        app.rejectedReason = reason ? reason : "Application was rejected.";
+        app.status = ApplicationStatus.Rejected
+        app.rejectedReason = reason ? reason : "Application was rejected."
         app.evaluatedBy = req.auth.id
 
         await app.save();
@@ -241,6 +245,59 @@ async function adminPatchRejectApplication(req,res,next){
             reason: reason || "Application was rejected",
             id,
         })
+    } catch (e) {
+        return next(e)
+    }
+}
+
+async function adminPatchApplicationStatus(req, res, next) {
+    // Set some other status for example, incomplete or request more information
+    try {
+        const { action, message } = req.body;
+        const { id } = req.params;
+        // Find the application and set the special status
+        const app = await ApplicationModel.findById(id).exec()
+        if (!app) return res.status(404).json({ err: `application with id ${id} not found`})
+
+        switch (action) {
+            case "mark_more_info_required":
+                app.status = ApplicationStatus.MoreInfoRequired
+                app.statusMessage = message
+                await app.save()
+                return res.status(201).json({
+                    msg: `Application status updated`,
+                    id,
+                })
+            case "mark_incomplete":
+                app.status = ApplicationStatus.Incomplete
+                app.statusMessage = message
+                await app.save()
+                return res.status(201).json({
+                    msg: `Application status updated`,
+                    id,
+                })
+            case "update_reject_reason": 
+                app.status = ApplicationStatus.Rejected
+                app.rejectedReason = message
+                await app.save()
+                return res.status(201).json({
+                    msg: `Application status updated`,
+                    id,
+                })
+            case "admin_cancel":
+                // Admin initiated cancellation of an application
+                app.status = ApplicationStatus.Cancelled
+                // Do we need a reason?
+                await app.save()
+                return res.status(201).json({
+                    msg: `Application status updated: cancelled`,
+                    id,
+                })
+            default:
+                return res.status(400).json({
+                    err: 'Invalid request'
+                })
+        }
     } catch (e) {
         return next(e)
     }
@@ -257,6 +314,9 @@ export default function(app){
     app.get ("/admin/application/all"        , adminRoute                    , adminGetAllApplications    )
     app.patch("/admin/application/approve/:id", adminApplicationQueryValidator, adminPatchApproveApplication)
     app.patch("/admin/application/reject/:id" , adminApplicationQueryValidator, adminApplicationRejectValidator,  adminPatchRejectApplication )
+
+    // We can use this route to handle setting the application status / message to some other state other than approve / reject
+    app.patch("/admin/application/update/:id" , adminApplicationQueryValidator, adminApplicationPatchStatusValidator,  adminPatchApplicationStatus )
 
     console.log("Application component registered.")
 }
