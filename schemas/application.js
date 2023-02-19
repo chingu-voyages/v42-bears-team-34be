@@ -29,7 +29,8 @@ const ApplicationSchema = new mongoose.Schema({
     },
     // this can be: pending, approved, rejected, cancelled
     status : { type: String, enum: [ApplicationStatus.Pending, ApplicationStatus.Approved, ApplicationStatus.Rejected, ApplicationStatus
-    .Cancelled]},
+    .Cancelled, ApplicationStatus.Incomplete, ApplicationStatus.MoreInfoRequired]},
+    statusMessage: String,
 
     // who requested this loan
     requestedBy: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},

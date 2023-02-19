@@ -1,4 +1,11 @@
-# Environment variables
+# AVOCDOLoan API Server
+- Back end project. The front end repo can be found [here](https://github.com/chingu-voyages/v42-bears-team-34)
+- The entire app is live at <https://avcdoloan.web.app/>
+
+## Tech stack
+- MongoDB with mongoose
+- ExpressJs
+## Environment variables
 
 Create a .env file in the root of the project and populate it with:
 
@@ -23,9 +30,9 @@ MONGO_DBNAME=(the database name the app is going to use)
 
 I think this can be done automatically?
 
-# Standards
+## Standards
 
-## Response
+### Response
 
 Backend will respond only with objects encoded in JSON.
 
@@ -42,7 +49,7 @@ It will accept only data encoded as ``application/x-www-form-urlencoded`` .
 Where "field" is also specified by the component, so the Authentication component, for example, returns an object with a "token" field.
 
 
-## Endpoints
+### Endpoints
 
 - Backend endpoints should be prefixed with ``/{component name}/``.
 
