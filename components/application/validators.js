@@ -1,4 +1,4 @@
-import { body , param}  from 'express-validator';
+import { body , param, query}  from 'express-validator';
 
 // application level validators
 import {  protectedRoute } from '../../middleware/protectedRoute.js';
@@ -39,4 +39,8 @@ export const adminApplicationPatchStatusValidator = [
         "mark_more_info_required", "update_reject_reason", "admin_cancel"].includes(value)
     }),
     body("message").optional().trim().escape()
+]
+
+export const paymentSizeValidator = [
+    query("requestedLoanAmount").exists().isInt()
 ]

@@ -12,6 +12,7 @@ import {
     adminApplicationQueryValidator,
     adminApplicationRejectValidator,
     adminApplicationPatchStatusValidator,
+    paymentSizeValidator,
 } from './validators.js';
 
 // services
@@ -250,6 +251,19 @@ async function adminPatchRejectApplication(req,res,next){
     }
 }
 
+async function getPaymentSize(req, res, next) {
+    // This method calculates the payment sizes based on the requested loan amount from 2 -> 12 and returns values
+    const { requestedLoanAmount } = req.query;
+
+    if (isNaN(requestedLoanAmount)) {
+        return res.status(400).json({
+            err: 'requested loan amount is not a number'
+        })
+    }
+    const paymentValues = calculatePaymentSize(requestedLoanAmount);
+    return res.status(200).send(paymentValues)
+}
+
 async function adminPatchApplicationStatus(req, res, next) {
     // Set some other status for example, incomplete or request more information
     try {
@@ -303,12 +317,34 @@ async function adminPatchApplicationStatus(req, res, next) {
     }
 }
 
+function calculatePaymentSize(presentValue){
+    if (!presentValue) return {}
+    // This will return an object { numberOfPayments: paymentSize$ }
+    // 10% per year
+    const annualInterest = 0.1 // Store this in an env?
+
+    // in some places you'll see annualInterest/12, annualInterest ^ (1/12) is also acceptable
+    const interest = (1 + annualInterest)**(1/12) - 1
+
+    const paymentsObject = {};
+    for (let i = 2; i <= 12; i++) {
+        const paymentSize =
+          presentValue * ((1+interest)**(i) * interest) /
+                          ((1+interest)**(i) -1)
+        // round it off
+        paymentsObject[i] =  parseFloat(paymentSize.toFixed(2));
+    }
+    return paymentsObject;
+}
 export default function(app){
     // user procedures
     app.post("/application/apply"      , applicationValidator           ,postMakeApplication)
     app.post("/application/cancel/:id" , userApplicationQueryValidator  ,postCancelApplication)
     app.get ("/application/view/:id"   , userApplicationQueryValidator  ,getApplicationById)
     app.get ("/application/my"         , protectedRoute                 ,getApplicationsForAuthenticatedUser)
+
+    // A route that gets the payment size via a query
+    app.get("/application/payment_size", paymentSizeValidator, getPaymentSize )
 
     // administrative procedures
     app.get ("/admin/application/all"        , adminRoute                    , adminGetAllApplications    )
