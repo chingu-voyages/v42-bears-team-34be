@@ -9,7 +9,8 @@ import {
     adminCreationGuard,
     adminCreationValidator,
     adminAuthTokenGuard, 
-    idValidator
+    idValidator,
+    patchUserAttributesValidator
 } from './validators.js';
 
 // schemas
@@ -233,7 +234,8 @@ async function getUserById(req, res, next) {
             lastName: user.lastName,
             dateOfBirth: user.dateOfBirth,
             email: user.email,
-            applicantGender: user.applicantGender
+            applicantGender: user.applicantGender,
+            plaid: !!(user.plaidAccessToken && user.plaidItemId)
         })
 
     } catch (error) {
@@ -294,6 +296,44 @@ async function checkIfUserExistsInDb (email) {
     }
 }
 
+/**
+ * This patches the user's details
+ */
+async function patchUpdateUserAttributes (req, res, next) {
+    const { id } = req.params;
+    // Authenticated user can only update their own profile
+    if (req.auth.id !== id) return res.status(401).json({ err: "Update user attributes: not an authorized operation"});
+
+    try {
+        const user = await User.findById(id).exec();
+        if (!user) return res.status(404).json({ err: `User with ${id} not found.`});
+        const {
+            firstName, lastName, city, province, postalCode, additionalAddress, unitNumber, applicantGender, dateOfBirth, streetAddress
+        } = req.body;
+
+        user.firstName = firstName;
+        user.lastName = lastName;
+        user.address = {
+            streetAddress, 
+            unitNumber,
+            city,
+            postalCode,
+            province,
+            additionalAddress
+        }
+        user.applicantGender = applicantGender;
+        user.dateOfBirth = dateOfBirth;
+        await user.save();
+        return res.status(201).send({ 
+            msg: `User attributes were patched`
+        })
+    } catch (error) {
+        return res.status(500).json({
+            msg: "Encountered a server error completing this request"
+        })
+    }
+
+}
 export default function(app){
     app.post("/auth/signup"         , userProfileValidator     , postSignUp)
     app.post("/auth/admin-create"   , adminCreationGuard, adminAuthTokenGuard, adminCreationValidator, postCreateAdmin)
@@ -302,7 +342,8 @@ export default function(app){
     app.get ("/auth/profile"        , getProfile)
     app.get ("/auth/verify/:tok"    , getVerify)
     app.post("/auth/forgotpassword" , postForgotPassword)
-    app.get("/auth/user/:id"        , protectedRoute, idValidator              , getUserById)
+    app.get("/auth/user/:id"        , protectedRoute, idValidator, getUserById)
+    app.patch("/auth/user/:id", protectedRoute, idValidator, patchUserAttributesValidator, patchUpdateUserAttributes)
 
     console.log("Authentication component registered.")
 }

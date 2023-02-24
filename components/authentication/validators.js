@@ -49,6 +49,28 @@ export const adminCreationValidator = [
     validationGuard,
 ]
 
+export const patchUserAttributesValidator = [
+    body('firstName').exists().trim().escape(),
+    body('lastName').exists().trim().escape(),
+    body('streetAddress').exists().trim().escape(),
+    body('city').exists().trim().escape(),
+    body('postalCode').exists().trim().escape(),
+    body('province').exists().trim().escape(),
+    body('applicantGender').trim().escape().custom((value) => {
+        return ["male", "female", "other"].includes(value);
+    }),
+    body('additionalAddress').optional().trim().escape(),
+    body('unitNumber').optional().trim().escape(),
+    body('dateOfBirth').exists().custom(
+        date =>{
+            // maybe check if the person is at least X years old where X is how old you need
+            // to be to get a loan?
+            const dateObject = dayjs(date)
+            return dayjs(dateObject, "MM-DD-YYYY", true).isValid()
+        }
+    ),
+    validationGuard,
+]
 export const linkPublicTokenValidator = [
     body('publicToken').exists(),
     validationGuard
