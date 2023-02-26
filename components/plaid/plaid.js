@@ -109,7 +109,6 @@ async function getFinancialDetailsFromPlaidByUserId(req,res){
       => this should be a scheduled task.
     */
     const { id } = req.params;
-    const { category } = req.query;
     const user = await User.findById(id).exec()
     if (!user) {
       return userNotFound(res)
