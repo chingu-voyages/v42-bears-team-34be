@@ -10,15 +10,21 @@ import {
     adminCreationValidator,
     adminAuthTokenGuard, 
     idValidator,
-    patchUserAttributesValidator
+    patchUserAttributesValidator,
+    passwordRecoveryRequestEmailValidator
 } from './validators.js';
 
 // schemas
 import User from "../../schemas/user.js"
 
 // services
-import "../../services/emailer.js"
 import { protectedRoute } from '../../middleware/protectedRoute.js';
+import { JWTManager } from '../../services/JWTManager.js';
+import dayjs from 'dayjs';
+import { IS_PRODUCTION } from '../../services/environment.js';
+import { PasswordRecoveryEmail } from '../../data/email/password-recovery-email/password-recovery-email.js';
+import { Emailer } from '../../services/emailer.js';
+
 
 // create account
 // this should schedule an "activate your account" email.
@@ -266,17 +272,46 @@ function getVerify(req,res){
 }
 
 // send a "change password" e-mail
-function postForgotPassword(req,res){
+async function postRequestPasswordRecovery(req,res){
     /*
         DOS
         - should this directly set something within the user document
         - or should this simply enqueue a "password change" without changing anything
           within the user document?
     */
-    throw "Not implemented"
-    res.status(200).json({
-        msg : "If the e-mail belongs to an account, you'll be receiving a password-reset e-mail soon."
-    })
+
+    // Find the user by e-mail. Create a token from the data and send an e-mail
+    const { email } = req.body;
+
+    try {
+        const user = await User.findOne({ email: email }).exec();
+        if (!user) {
+            // Do nothing
+            return res.status(200).send({ msg: "User wasn't found, but OK"})
+        }
+
+        // Use the token manager to tokenize password recovery
+        const token = await JWTManager.sign(
+            {
+                email: user.email,
+                createdAt: dayjs().toDate(),
+                expires: dayjs().add(30, 'minutes').toDate()
+            }
+        )
+        const recoveryURL = generatePasswordRecoveryURL(token);
+        const passwordRecoveryEmail = new PasswordRecoveryEmail(user.email, recoveryURL);
+        const emailer = new Emailer();
+        await emailer.sendEmail(passwordRecoveryEmail);
+        return res.status(200).send({
+            msg: 'OK'
+        })
+
+    } catch (err) {
+        console.log(err)
+        return res.status(500).json({
+            err: 'Unable to complete recovery operation'
+        })
+    }
 }
 
 /**
@@ -334,16 +369,24 @@ async function patchUpdateUserAttributes (req, res, next) {
     }
 
 }
+
+function generatePasswordRecoveryURL (token) {
+    // We need to determine the development environment.
+    if (IS_PRODUCTION) {
+        return `${process.env.PRODUCTION_APP_DOMAIN}/password-reset/recover?token=${token}`
+    }
+    return `${process.env.DEV_APP_DOMAIN}/password-reset/recover?token=${token}`
+}
 export default function(app){
-    app.post("/auth/signup"         , userProfileValidator     , postSignUp)
-    app.post("/auth/admin-create"   , adminCreationGuard, adminAuthTokenGuard, adminCreationValidator, postCreateAdmin)
-    app.post("/auth/login"          , loginCredentialsValidator, postLogin)
-    app.post("/auth/refresh"        , postRefresh)
-    app.get ("/auth/profile"        , getProfile)
-    app.get ("/auth/verify/:tok"    , getVerify)
-    app.post("/auth/forgotpassword" , postForgotPassword)
-    app.get("/auth/user/:id"        , protectedRoute, idValidator, getUserById)
-    app.patch("/auth/user/:id", protectedRoute, idValidator, patchUserAttributesValidator, patchUpdateUserAttributes)
+    app.get  ("/auth/user/:id"                   , protectedRoute, idValidator, getUserById)
+    app.get  ("/auth/profile"                    , getProfile)
+    app.get  ("/auth/verify/:tok"                , getVerify)
+    app.post ("/auth/signup"                     , userProfileValidator     , postSignUp)
+    app.post ("/auth/admin-create"               , adminCreationGuard, adminAuthTokenGuard, adminCreationValidator, postCreateAdmin)
+    app.post ("/auth/login"                      , loginCredentialsValidator, postLogin)
+    app.post ("/auth/refresh"                    , postRefresh)
+    app.post ("/auth/password-recovery/request"  , passwordRecoveryRequestEmailValidator, postRequestPasswordRecovery) // This should spawn and send a request e-mail
+    app.patch("/auth/user/:id", protectedRoute   , idValidator, patchUserAttributesValidator, patchUpdateUserAttributes)
 
     console.log("Authentication component registered.")
 }
