@@ -5,7 +5,7 @@ export class BaseEmail {
 	/**
 	 * @param { string } recipient
 	 * @param { string } subject
-	 * @param { string } html
+	 * @param { { html: string, text: string } } html
 	 */
 	constructor(recipient, subject, html) {
 		this.#recipient = recipient;
@@ -15,13 +15,14 @@ export class BaseEmail {
 
 	/**
 	 * 
-	 * @returns {{ to: string, subject: string, html: string }}
+	 * @returns {{ to: string, subject: string, html:string }}
 	 */
 	getEmail () {
 		return {
 			to: this.#recipient,
 			subject: this.#subject,
-			html: this.#html
+			html: this.#html.html,
+			text: this.#html.text,
 		}
 	}
 }
