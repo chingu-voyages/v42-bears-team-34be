@@ -30,6 +30,7 @@ MONGO_DBNAME=(the database name the app is going to use)
 ADMIN_EMAIL=
 ADMIN_EMAIL_PASSWORD=
 PASSWORD_RECOVERY_SECRET=
+EMAIL_SERVICES_ON=true| false #Toggle to true to allow e-mailing
 ```
 
 I think this can be done automatically?

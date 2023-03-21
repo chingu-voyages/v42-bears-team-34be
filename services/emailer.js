@@ -27,15 +27,22 @@ export class Emailer {
 	 * @param {BaseEmail} email 
 	 */
 	async sendEmail (email) {
-		try {
-			const res = await this.#transporter.sendMail({
-				from: this.#sender,
-				...email.getEmail()
-			});
-			console.log(res)
-		} catch (err) {
-			console.log(err)
-			throw new Error(err)
+		const emailEnabled = process.env.EMAIL_SERVICES_ON === "true";
+		const emailObject = {
+			from: this.#sender,
+			...email.getEmail()
+		}
+		if (emailEnabled) {
+			try {
+				const res = await this.#transporter.sendMail(emailObject);
+				console.info(res)
+			} catch (err) {
+				console.error(err)
+				throw new Error(err)
+			}
+		} else {
+			// For testing purposes, simply print the e-mail to the console
+			console.info(emailObject);
 		}
 	}
 }
