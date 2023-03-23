@@ -29,7 +29,6 @@ MONGO_DBNAME=(the database name the app is going to use)
 // For e-mail functionality
 ADMIN_EMAIL=
 ADMIN_EMAIL_PASSWORD=
-PASSWORD_RECOVERY_SECRET=
 EMAIL_SERVICES_ON=true| false #Toggle to true to allow e-mailing
 ```
 
