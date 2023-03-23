@@ -1,7 +1,6 @@
 // libraries
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-
+import { v4 as uuidv4 } from 'uuid';
 // validator
 import { 
     userProfileValidator,
@@ -11,7 +10,8 @@ import {
     adminAuthTokenGuard, 
     idValidator,
     patchUserAttributesValidator,
-    passwordRecoveryRequestEmailValidator
+    passwordRecoveryRequestEmailValidator,
+    passwordRecoveryUpdatePasswordValidator
 } from './validators.js';
 
 // schemas
@@ -24,8 +24,9 @@ import dayjs from 'dayjs';
 import { IS_PRODUCTION } from '../../services/environment.js';
 import { PasswordRecoveryEmail } from '../../data/email/password-recovery-email/password-recovery-email.js';
 import { Emailer } from '../../services/emailer.js';
+import { PasswordChangedEmail } from '../../data/email/password-changed-email/password-changed-email.js';
 
-
+const TESTING = false;
 // create account
 // this should schedule an "activate your account" email.
 async function postSignUp(req,res){
@@ -148,18 +149,12 @@ async function postLogin(req,res){
         }
 
         // make a JWT
-        let token = jwt.sign(
-            {
-                id : _id,
-                firstName,
-                lastName,
-                email,
-                role
-            }, 
-            process.env.LOANAPP_JWT_SECRET,
-            {
-                expiresIn: process.env.LOANAPP_JWT_DURATION
-            }
+        const token = JWTManager.createLoginToken(
+            _id,
+            firstName,
+            lastName,
+            email,
+            role
         )
 
         // send it back
@@ -189,17 +184,10 @@ function postRefresh(req,res){
             return res.status(401).json({
                 err : "Expired session. Please login again."
             })
+        
+        // Grab a refresh token using the token manager
+        const newToken = JWTManager.createRefreshToken(oldToken);
 
-        // clear exp and iat
-        delete oldToken.iat
-        delete oldToken.exp
-        let newToken = jwt.sign(
-            oldToken,
-            process.env.LOANAPP_JWT_SECRET,
-            {
-                expiresIn: process.env.LOANAPP_JWT_DURATION
-            }
-        )
         res.status(200).json({
             tok : newToken
         })
@@ -291,17 +279,24 @@ async function postRequestPasswordRecovery(req,res){
         }
 
         // Use the token manager to tokenize password recovery
+        // Also generate a UUID to store on user document
+        const recoveryToken = uuidv4();
+
         const token = await JWTManager.sign(
             {
                 email: user.email,
                 createdAt: dayjs().toDate(),
-                expires: dayjs().add(30, 'minutes').toDate()
+                expires: dayjs().add(30, 'minutes').toDate(),
+                recoveryToken: recoveryToken,
+                isAdmin: user.role === "admin"
             }
         )
         const recoveryURL = generatePasswordRecoveryURL(token);
-        const passwordRecoveryEmail = new PasswordRecoveryEmail(user.email, recoveryURL);
-        const emailer = new Emailer();
-        await emailer.sendEmail(passwordRecoveryEmail);
+        const userName = `${user.firstName} ${user.lastName}`
+        await sendEmail(new PasswordRecoveryEmail(user.email, userName, recoveryURL));
+
+        user.recoveryToken = recoveryToken;
+        await user.save()
         return res.status(200).send({
             msg: 'OK'
         })
@@ -326,7 +321,7 @@ async function checkIfUserExistsInDb (email) {
         return false;
     } catch (error) {
         return res.status(500).json({
-            msg: "Encountered a server error completing this request"
+            err: "Encountered a server error completing this request"
         })
     }
 }
@@ -334,7 +329,7 @@ async function checkIfUserExistsInDb (email) {
 /**
  * This patches the user's details
  */
-async function patchUpdateUserAttributes (req, res, next) {
+async function patchUpdateUserAttributes (req, res) {
     const { id } = req.params;
     // Authenticated user can only update their own profile
     if (req.auth.id !== id) return res.status(401).json({ err: "Update user attributes: not an authorized operation"});
@@ -364,10 +359,49 @@ async function patchUpdateUserAttributes (req, res, next) {
         })
     } catch (error) {
         return res.status(500).json({
-            msg: "Encountered a server error completing this request"
+            err: "Encountered a server error completing this request"
         })
     }
 
+}
+
+async function passwordRecoveryUpdatePassword(req, res) {
+    // Expect a token and a plain-text string consisting of new password
+    const { password, token } = req.body;
+    try {
+        const decodedToken = await JWTManager.verify(token);
+        const user = await User.findOne(
+            {
+                email: decodedToken.email,
+                recoveryToken: decodedToken.recoveryToken
+            }
+        ).exec();
+
+        if (!user) {
+            return res.status(400).json(
+                {
+                    err: "Invalid or expired request."
+                }
+            )
+        }
+        // If we found the user, let's has the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        user.hashedPassword = hashedPassword;
+        user.recoveryToken = ''
+        await user.save();
+
+        // Send a notification e-mail to user that password has been updated
+        await sendEmail(new PasswordChangedEmail(user.email, `${user.firstName} ${user.lastName}`));
+        return res.status(201).json({
+            msg: 'ok',
+            password
+        })
+    } catch (err) {
+        console.error(err)
+        return res.status(500).json({
+            err: err,
+        })
+    }
 }
 
 function generatePasswordRecoveryURL (token) {
@@ -377,6 +411,11 @@ function generatePasswordRecoveryURL (token) {
     }
     return `${process.env.DEV_APP_DOMAIN}/password-reset/recover?token=${token}`
 }
+
+async function sendEmail(email) {
+    const emailer = new Emailer();
+    return emailer.sendEmail(email);
+}
 export default function(app){
     app.get  ("/auth/user/:id"                   , protectedRoute, idValidator, getUserById)
     app.get  ("/auth/profile"                    , getProfile)
@@ -385,8 +424,10 @@ export default function(app){
     app.post ("/auth/admin-create"               , adminCreationGuard, adminAuthTokenGuard, adminCreationValidator, postCreateAdmin)
     app.post ("/auth/login"                      , loginCredentialsValidator, postLogin)
     app.post ("/auth/refresh"                    , postRefresh)
-    app.post ("/auth/password-recovery/request"  , passwordRecoveryRequestEmailValidator, postRequestPasswordRecovery) // This should spawn and send a request e-mail
+    app.post ("/auth/password-recovery/request"  , passwordRecoveryRequestEmailValidator, postRequestPasswordRecovery)
+    app.post ("/auth/password-recovery/update-password", passwordRecoveryUpdatePasswordValidator, passwordRecoveryUpdatePassword)
     app.patch("/auth/user/:id", protectedRoute   , idValidator, patchUserAttributesValidator, patchUpdateUserAttributes)
 
     console.log("Authentication component registered.")
 }
+

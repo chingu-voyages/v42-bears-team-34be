@@ -122,3 +122,10 @@ export const idValidator = (req, res, next) => [
     validationGuard,
     next()
 ]
+
+
+export const passwordRecoveryUpdatePasswordValidator = [
+    body('token').isString(),
+    body('password').isString(),
+    validationGuard
+]

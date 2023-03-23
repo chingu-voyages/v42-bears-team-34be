@@ -9,7 +9,7 @@ export class JWTManager {
 	static async sign (payload) {
 		return new Promise((resolve, reject) => {
 				// Created JWT from payload
-				jsonwebtoken.sign(payload, process.env.PASSWORD_RECOVERY_SECRET, { algorithm: 'HS256'}, (err, token) => {
+				jsonwebtoken.sign(payload, process.env.LOANAPP_JWT_SECRET, { algorithm: 'HS256'}, (err, token) => {
 					if (err) reject(err);
 					resolve(token);
 				})
@@ -23,8 +23,8 @@ export class JWTManager {
 	 */
 	static async verify (data) {
 		return new Promise((resolve, reject) => {
-			jsonwebtoken.verify(data, process.env.PASSWORD_RECOVERY_SECRET, { algorithm: 'HS256'}, (err, decoded) => {
-				if (err) reject(err);
+			jsonwebtoken.verify(data, process.env.LOANAPP_JWT_SECRET, { algorithm: 'HS256'}, (err, decoded) => {
+				if (err) reject(`There was a problem processing the JWT: ${err}`);
 				resolve(decoded)
 			})
 		})

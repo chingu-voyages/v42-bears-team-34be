@@ -14,7 +14,7 @@ const html =`
     <p>Hello, <%= name %></p>
     <p>Here's your password reset link:</p>
 
-    <a href="<%= recoveryURL %>"><%= recoveryURL %> </a>
+    <a href="<%= recoveryURL %>"><%= recoveryURL %></a>
     <p>Do not share this link with anyone else, as this can be used to gain control of your account.</p>
     <p>If you have received this in error, please e-mail us at ${process.env.ADMIN_EMAIL}</p>
 
@@ -46,11 +46,10 @@ export class PasswordRecoveryEmail extends BaseEmail {
 
       If you have received this in error, please e-mail us at ${process.env.ADMIN_EMAIL}
       Best regards,
-      AVOCDOLOAN Admin Team
+      AVCDOLOAN Admin Team
       `
   };
 
-    console.log(htmlBody);
     super(
       recipient,
       subject,
