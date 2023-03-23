@@ -112,8 +112,20 @@ export const adminAuthTokenGuard = (req, res, next) => {
     }
 }
 
+export const passwordRecoveryRequestEmailValidator = [
+    body('email').exists().isEmail(),
+    validationGuard,
+]
+
 export const idValidator = (req, res, next) => [
     param('id').isHexadecimal().trim().isLength({min: 24, max: 24}).escape(),
     validationGuard,
     next()
+]
+
+
+export const passwordRecoveryUpdatePasswordValidator = [
+    body('token').isString(),
+    body('password').isString(),
+    validationGuard
 ]

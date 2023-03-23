@@ -1,7 +1,6 @@
 // libraries
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-
+import { v4 as uuidv4 } from 'uuid';
 // validator
 import { 
     userProfileValidator,
@@ -10,16 +9,24 @@ import {
     adminCreationValidator,
     adminAuthTokenGuard, 
     idValidator,
-    patchUserAttributesValidator
+    patchUserAttributesValidator,
+    passwordRecoveryRequestEmailValidator,
+    passwordRecoveryUpdatePasswordValidator
 } from './validators.js';
 
 // schemas
 import User from "../../schemas/user.js"
 
 // services
-import "../../services/emailer.js"
 import { protectedRoute } from '../../middleware/protectedRoute.js';
+import { JWTManager } from '../../services/JWTManager.js';
+import dayjs from 'dayjs';
+import { IS_PRODUCTION } from '../../services/environment.js';
+import { PasswordRecoveryEmail } from '../../data/email/password-recovery-email/password-recovery-email.js';
+import { Emailer } from '../../services/emailer.js';
+import { PasswordChangedEmail } from '../../data/email/password-changed-email/password-changed-email.js';
 
+const TESTING = false;
 // create account
 // this should schedule an "activate your account" email.
 async function postSignUp(req,res){
@@ -142,18 +149,12 @@ async function postLogin(req,res){
         }
 
         // make a JWT
-        let token = jwt.sign(
-            {
-                id : _id,
-                firstName,
-                lastName,
-                email,
-                role
-            }, 
-            process.env.LOANAPP_JWT_SECRET,
-            {
-                expiresIn: process.env.LOANAPP_JWT_DURATION
-            }
+        const token = JWTManager.createLoginToken(
+            _id,
+            firstName,
+            lastName,
+            email,
+            role
         )
 
         // send it back
@@ -183,17 +184,10 @@ function postRefresh(req,res){
             return res.status(401).json({
                 err : "Expired session. Please login again."
             })
+        
+        // Grab a refresh token using the token manager
+        const newToken = JWTManager.createRefreshToken(oldToken);
 
-        // clear exp and iat
-        delete oldToken.iat
-        delete oldToken.exp
-        let newToken = jwt.sign(
-            oldToken,
-            process.env.LOANAPP_JWT_SECRET,
-            {
-                expiresIn: process.env.LOANAPP_JWT_DURATION
-            }
-        )
         res.status(200).json({
             tok : newToken
         })
@@ -266,17 +260,53 @@ function getVerify(req,res){
 }
 
 // send a "change password" e-mail
-function postForgotPassword(req,res){
+async function postRequestPasswordRecovery(req,res){
     /*
         DOS
         - should this directly set something within the user document
         - or should this simply enqueue a "password change" without changing anything
           within the user document?
     */
-    throw "Not implemented"
-    res.status(200).json({
-        msg : "If the e-mail belongs to an account, you'll be receiving a password-reset e-mail soon."
-    })
+
+    // Find the user by e-mail. Create a token from the data and send an e-mail
+    const { email } = req.body;
+
+    try {
+        const user = await User.findOne({ email: email }).exec();
+        if (!user) {
+            // Do nothing
+            return res.status(200).send({ msg: "User wasn't found, but OK"})
+        }
+
+        // Use the token manager to tokenize password recovery
+        // Also generate a UUID to store on user document
+        const recoveryToken = uuidv4();
+
+        const token = await JWTManager.sign(
+            {
+                email: user.email,
+                createdAt: dayjs().toDate(),
+                expires: dayjs().add(30, 'minutes').toDate(),
+                recoveryToken: recoveryToken,
+                isAdmin: user.role === "admin"
+            }
+        )
+        const recoveryURL = generatePasswordRecoveryURL(token);
+        const userName = `${user.firstName} ${user.lastName}`
+        await sendEmail(new PasswordRecoveryEmail(user.email, userName, recoveryURL));
+
+        user.recoveryToken = recoveryToken;
+        await user.save()
+        return res.status(200).send({
+            msg: 'OK'
+        })
+
+    } catch (err) {
+        console.log(err)
+        return res.status(500).json({
+            err: 'Unable to complete recovery operation'
+        })
+    }
 }
 
 /**
@@ -291,7 +321,7 @@ async function checkIfUserExistsInDb (email) {
         return false;
     } catch (error) {
         return res.status(500).json({
-            msg: "Encountered a server error completing this request"
+            err: "Encountered a server error completing this request"
         })
     }
 }
@@ -299,7 +329,7 @@ async function checkIfUserExistsInDb (email) {
 /**
  * This patches the user's details
  */
-async function patchUpdateUserAttributes (req, res, next) {
+async function patchUpdateUserAttributes (req, res) {
     const { id } = req.params;
     // Authenticated user can only update their own profile
     if (req.auth.id !== id) return res.status(401).json({ err: "Update user attributes: not an authorized operation"});
@@ -329,21 +359,75 @@ async function patchUpdateUserAttributes (req, res, next) {
         })
     } catch (error) {
         return res.status(500).json({
-            msg: "Encountered a server error completing this request"
+            err: "Encountered a server error completing this request"
         })
     }
 
 }
+
+async function passwordRecoveryUpdatePassword(req, res) {
+    // Expect a token and a plain-text string consisting of new password
+    const { password, token } = req.body;
+    try {
+        const decodedToken = await JWTManager.verify(token);
+        const user = await User.findOne(
+            {
+                email: decodedToken.email,
+                recoveryToken: decodedToken.recoveryToken
+            }
+        ).exec();
+
+        if (!user) {
+            return res.status(400).json(
+                {
+                    err: "Invalid or expired request."
+                }
+            )
+        }
+        // If we found the user, let's has the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        user.hashedPassword = hashedPassword;
+        user.recoveryToken = ''
+        await user.save();
+
+        // Send a notification e-mail to user that password has been updated
+        await sendEmail(new PasswordChangedEmail(user.email, `${user.firstName} ${user.lastName}`));
+        return res.status(201).json({
+            msg: 'ok',
+            password
+        })
+    } catch (err) {
+        console.error(err)
+        return res.status(500).json({
+            err: err,
+        })
+    }
+}
+
+function generatePasswordRecoveryURL (token) {
+    // We need to determine the development environment.
+    if (IS_PRODUCTION) {
+        return `${process.env.PRODUCTION_APP_DOMAIN}/password-reset/recover?token=${token}`
+    }
+    return `${process.env.DEV_APP_DOMAIN}/password-reset/recover?token=${token}`
+}
+
+async function sendEmail(email) {
+    const emailer = new Emailer();
+    return emailer.sendEmail(email);
+}
 export default function(app){
-    app.post("/auth/signup"         , userProfileValidator     , postSignUp)
-    app.post("/auth/admin-create"   , adminCreationGuard, adminAuthTokenGuard, adminCreationValidator, postCreateAdmin)
-    app.post("/auth/login"          , loginCredentialsValidator, postLogin)
-    app.post("/auth/refresh"        , postRefresh)
-    app.get ("/auth/profile"        , getProfile)
-    app.get ("/auth/verify/:tok"    , getVerify)
-    app.post("/auth/forgotpassword" , postForgotPassword)
-    app.get("/auth/user/:id"        , protectedRoute, idValidator, getUserById)
-    app.patch("/auth/user/:id", protectedRoute, idValidator, patchUserAttributesValidator, patchUpdateUserAttributes)
+    app.get  ("/auth/user/:id"                   , protectedRoute, idValidator, getUserById)
+    app.get  ("/auth/profile"                    , getProfile)
+    app.get  ("/auth/verify/:tok"                , getVerify)
+    app.post ("/auth/signup"                     , userProfileValidator     , postSignUp)
+    app.post ("/auth/admin-create"               , adminCreationGuard, adminAuthTokenGuard, adminCreationValidator, postCreateAdmin)
+    app.post ("/auth/login"                      , loginCredentialsValidator, postLogin)
+    app.post ("/auth/refresh"                    , postRefresh)
+    app.post ("/auth/password-recovery/request"  , passwordRecoveryRequestEmailValidator, postRequestPasswordRecovery)
+    app.post ("/auth/password-recovery/update-password", passwordRecoveryUpdatePasswordValidator, passwordRecoveryUpdatePassword)
+    app.patch("/auth/user/:id", protectedRoute   , idValidator, patchUserAttributesValidator, patchUpdateUserAttributes)
 
     console.log("Authentication component registered.")
 }
+

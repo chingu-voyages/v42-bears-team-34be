@@ -48,7 +48,7 @@ const UserSchema = new mongoose.Schema({
 
     //activation: String,    // should be indexed by this, not used at the moment
     active    : Boolean,   // if this account is active or not
-
+    recoveryToken: String,
     
     },
     // this is actually the  second argument, not a field
