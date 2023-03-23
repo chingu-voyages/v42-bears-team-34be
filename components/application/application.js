@@ -78,6 +78,7 @@ async function getApplicationsForAuthenticatedUser(req,res,next){
         const filteredApplications = userApplications.map( a => ({
                 id                  : a.id,
                 applicantIncome     : a.applicantIncome,
+                applicantOccupation : a.applicantOccupation,
                 requestedLoanAmount : a.requestedLoanAmount,
                 numberOfInstallments: a.numberOfInstallments,
                 installmentAmount   : a.installmentAmount,
@@ -119,6 +120,7 @@ async function getApplicationById(req,res,next){
             requestedLoanAmount : a.requestedLoanAmount,
             numberOfInstallments: a.numberOfInstallments,
             installmentAmount   : a.installmentAmount,
+            applicantOccupation : a.applicantOccupation,
             loanPurpose         : a.loanPurpose,
             status              : a.status,
             statusMessage       : a.statusMessage,
@@ -336,12 +338,54 @@ function calculatePaymentSize(presentValue){
     }
     return paymentsObject;
 }
+
+async function patchApplicationById(req, res, next) {
+    const { id } = req.params;
+    const { 
+        requestedLoanAmount,
+        numberOfInstallments,
+        installmentAmount,
+        loanPurpose,
+        applicantOccupation,
+        applicantIncome,
+    } = req.body;
+
+    try {
+        // Find the application and make sure that the requestedBy matches
+        const app = await ApplicationModel.findById(id).exec();
+        if (!app) return res.status(404).json({ err: `Cannot find application ${id}`});
+
+        // Only admins can access and users accessing their own application
+        if (req.auth.role !== "admin") {
+            if (app.requestedBy.toString() !== req.auth.id) return res.status(401).json({
+                err: 'This operation is not allowed.'
+            })
+        }
+        
+        // Patch the contents of this app
+        app.requestedLoanAmount = requestedLoanAmount
+        app.numberOfInstallments = numberOfInstallments
+        app.installmentAmount = installmentAmount;
+        app.loanPurpose = loanPurpose;
+        app.applicantOccupation = applicantOccupation;
+        app.applicantIncome = applicantIncome;
+        
+        await app.save();
+        return res.status(201).json({
+            msg: `Application with id ${id} was patched`
+        })
+    } catch (e) {
+        return next(e)
+    }
+}
+
 export default function(app){
     // user procedures
     app.post("/application/apply"      , applicationValidator           ,postMakeApplication)
     app.post("/application/cancel/:id" , userApplicationQueryValidator  ,postCancelApplication)
     app.get ("/application/view/:id"   , userApplicationQueryValidator  ,getApplicationById)
     app.get ("/application/my"         , protectedRoute                 ,getApplicationsForAuthenticatedUser)
+    app.patch("/application/update/:id", userApplicationQueryValidator, applicationValidator, patchApplicationById )
 
     // A route that gets the payment size via a query
     app.get("/application/payment_size", paymentSizeValidator, getPaymentSize )
@@ -353,6 +397,5 @@ export default function(app){
 
     // We can use this route to handle setting the application status / message to some other state other than approve / reject
     app.patch("/admin/application/update/:id" , adminApplicationQueryValidator, adminApplicationPatchStatusValidator,  adminPatchApplicationStatus )
-
     console.log("Application component registered.")
 }
