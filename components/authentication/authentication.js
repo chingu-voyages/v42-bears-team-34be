@@ -11,7 +11,8 @@ import {
     idValidator,
     patchUserAttributesValidator,
     passwordRecoveryRequestEmailValidator,
-    passwordRecoveryUpdatePasswordValidator
+    passwordRecoveryUpdatePasswordValidator,
+    sendSignUpEmailRequestValidator
 } from './validators.js';
 
 // schemas
@@ -22,15 +23,16 @@ import { protectedRoute } from '../../middleware/protectedRoute.js';
 import { JWTManager } from '../../services/JWTManager.js';
 import dayjs from 'dayjs';
 import { IS_PRODUCTION } from '../../services/environment.js';
-import { PasswordRecoveryEmail } from '../../data/email/password-recovery-email/password-recovery-email.js';
-import { Emailer } from '../../services/emailer.js';
-import { PasswordChangedEmail } from '../../data/email/password-changed-email/password-changed-email.js';
+import { PasswordRecoveryEmail, PasswordChangedEmail } from '../../data/email/index.js';
+import { SignUpEmail } from '../../data/email/sign-up-email/sign-up-email.js';
+import { sendEmail } from '../../services/email-sender.js';
+
 
 const TESTING = false;
 // create account
 // this should schedule an "activate your account" email.
 async function postSignUp(req,res){
-    try{
+    try {
 
         /* First we should safely check if the e-mail already exists in our db
             If it does, we can return a 400 error and prompt the client to log in
@@ -72,7 +74,8 @@ async function postSignUp(req,res){
             throw err
         }
 
-        await newUser.save()
+        await newUser.save();
+        // Send a welcome e-mail to  the user
         res.status(201).json({
             msg : "Your account has been created, but it's pending activation. (not really, just login)"
         })
@@ -404,6 +407,24 @@ async function passwordRecoveryUpdatePassword(req, res) {
     }
 }
 
+async function sendSignUpEmail(req, res) {
+    const { email, itemId } = req.body;
+    // Find the user by the e-mail and itemID and then send the welcome e-mail
+    try {
+        const user = await User.findOne({ email: email, plaidItemId: itemId }).exec();
+        if (!user) return res.status(404).send({
+            err: `User not found with e-mail ${email} and itemId: ${itemId}`
+        });
+    
+        await sendEmail(new SignUpEmail(user.email, `${user.firstName} ${user.lastName}`))
+        return res.status(200).send({ msg: "ok "})
+    } catch (err) {
+        console.error(err)
+        return res.status(500).json({
+            err: err,
+        })
+    }
+}
 function generatePasswordRecoveryURL (token) {
     // We need to determine the development environment.
     if (IS_PRODUCTION) {
@@ -412,10 +433,6 @@ function generatePasswordRecoveryURL (token) {
     return `${process.env.DEV_APP_DOMAIN}/password-reset/recover?token=${token}`
 }
 
-async function sendEmail(email) {
-    const emailer = new Emailer();
-    return emailer.sendEmail(email);
-}
 export default function(app){
     app.get  ("/auth/user/:id"                   , protectedRoute, idValidator, getUserById)
     app.get  ("/auth/profile"                    , getProfile)
@@ -426,7 +443,9 @@ export default function(app){
     app.post ("/auth/refresh"                    , postRefresh)
     app.post ("/auth/password-recovery/request"  , passwordRecoveryRequestEmailValidator, postRequestPasswordRecovery)
     app.post ("/auth/password-recovery/update-password", passwordRecoveryUpdatePasswordValidator, passwordRecoveryUpdatePassword)
-    app.patch("/auth/user/:id", protectedRoute   , idValidator, patchUserAttributesValidator, patchUpdateUserAttributes)
+    app.post ("/auth/send_signup_email", sendSignUpEmailRequestValidator, sendSignUpEmail)
+    app.patch("/auth/user/:id", protectedRoute   , idValidator, patchUserAttributesValidator, patchUpdateUserAttributes);
+    
 
     console.log("Authentication component registered.")
 }
