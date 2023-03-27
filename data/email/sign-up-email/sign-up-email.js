@@ -14,7 +14,8 @@ const html = `
   <body>
 		<p>Hello, <%= name %></p>
 		<p>Thank you for registering for an AVCDOLOAN </p>
-		<p> We have received your application</p>
+		<p>We have received your application</p>
+		<p>Your application identification number is <%= applicationId %></p>
 		<p> Expect a response between 24-72 business hours.</p>
   <footer>
     <p>Best regards,</p>
@@ -27,16 +28,17 @@ export class SignUpEmail extends BaseEmail {
 	/**
 	 * 
 	 * @param {string} recipient e-mail address of recipient
-	 * @param {*} name 
+	 * @param {string} applicationId applicationId
 	 */
-	constructor(recipient, name) {
+	constructor(recipient, name, applicationId) {
 		const subject = `AVCDOLOAN Sign up`;
 		const htmlBody = {
-			html: ejs.render(html, { name: name }),
+			html: ejs.render(html, { name: name, applicationId: applicationId }),
 			text: 
 			`Hello${name}
 			Thank you for registering for an AVCDOLOAN 
 			We have received your application.
+			Your application identification number is ${applicationId}
 			Expect a response between 24-72 business hours.
 
 			If you have received this in error, please e-mail us at ${process.env.ADMIN_EMAIL}

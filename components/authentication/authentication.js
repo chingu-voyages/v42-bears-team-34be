@@ -23,8 +23,7 @@ import { protectedRoute } from '../../middleware/protectedRoute.js';
 import { JWTManager } from '../../services/JWTManager.js';
 import dayjs from 'dayjs';
 import { IS_PRODUCTION } from '../../services/environment.js';
-import { PasswordRecoveryEmail, PasswordChangedEmail } from '../../data/email/index.js';
-import { SignUpEmail } from '../../data/email/sign-up-email/sign-up-email.js';
+import { SignUpEmail, PasswordRecoveryEmail, PasswordChangedEmail } from '../../data/email/index.js';
 import { sendEmail } from '../../services/email-sender.js';
 
 
@@ -408,15 +407,15 @@ async function passwordRecoveryUpdatePassword(req, res) {
 }
 
 async function sendSignUpEmail(req, res) {
-    const { email, itemId } = req.body;
+    const { email, itemId, pendingApplicationId } = req.body;
     // Find the user by the e-mail and itemID and then send the welcome e-mail
     try {
         const user = await User.findOne({ email: email, plaidItemId: itemId }).exec();
         if (!user) return res.status(404).send({
             err: `User not found with e-mail ${email} and itemId: ${itemId}`
         });
-    
-        await sendEmail(new SignUpEmail(user.email, `${user.firstName} ${user.lastName}`))
+        const name = `${user.firstName} ${user.lastName}`;
+        await sendEmail(new SignUpEmail(user.email, name, pendingApplicationId))
         return res.status(200).send({ msg: "ok "})
     } catch (err) {
         console.error(err)

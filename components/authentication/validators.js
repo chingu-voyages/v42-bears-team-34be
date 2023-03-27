@@ -133,5 +133,6 @@ export const passwordRecoveryUpdatePasswordValidator = [
 export const sendSignUpEmailRequestValidator = [
     body('email').isEmail(),
     body('itemId').isString(),
+    body('pendingApplicationId').isString(),
     validationGuard
 ]
