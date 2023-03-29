@@ -11,6 +11,7 @@ export class Emailer {
 	#sender;
 	#transporter;
 	constructor() {
+		console.log("Host: "+process.env.EMAIL_HOST+"User: "+process.env.ADMIN_EMAIL, " Pass: "+process.env.ADMIN_EMAIL_PASSWORD)
 		this.#sender = process.env.ADMIN_EMAIL;
 		this.#transporter = nodemailer.createTransport({
 			host: process.env.EMAIL_HOST,

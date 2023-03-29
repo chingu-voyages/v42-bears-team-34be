@@ -14,12 +14,15 @@ import application    from './components/application/application.js'
 import plaid from "./components/plaid/plaid.js"
 import db from './services/database.js'
 
+import { emailer } from './services/emailer.js'
+
 const
     app = express(),
     router = express.Router()
 
 
 db.initialize()
+emailer.initialize()
 
 // register all our middlewares
 
@@ -59,14 +62,14 @@ app.use(urlencoded({
     extended: true
 }))
 
-
-
 // tell our components to register all their routes
 authentication(router)
 application   (router)
 plaid         (router)
 
 app.use('/api/',router)
+
+
 
 
 // if the frontend receives a 401 status, it should clear the
@@ -87,6 +90,10 @@ app.use( (err,req,res, next) =>{
  
 app.get("/link_tester", (req,res)=>{
     res.sendFile(process.cwd()+"/linktester.html")
+})
+
+app.get("/version", (req,res)=>{
+    res.send("29-03-2023")
 })
 
 const port = process.env.LOANAPP_PORT
