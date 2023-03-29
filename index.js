@@ -14,15 +14,12 @@ import application    from './components/application/application.js'
 import plaid from "./components/plaid/plaid.js"
 import db from './services/database.js'
 
-import { emailer } from './services/emailer.js'
-
 const
     app = express(),
     router = express.Router()
 
 
 db.initialize()
-emailer.initialize()
 
 // register all our middlewares
 
