@@ -8,7 +8,7 @@ const agent = axios.create({
 	}
 });
 
-export class WebHook {
+class WebHook {
 	/**
 	 * 
 	 * @param {string} url 
@@ -19,3 +19,6 @@ export class WebHook {
 		return agent.post(`/email${url}`, data)
 	}
 }
+
+const webHook = new WebHook();
+export { webHook }

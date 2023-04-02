@@ -18,7 +18,7 @@ import {
 
 // services
 
-import { WebHook } from '../../services/web-hook.js';
+import { webHook } from '../../services/web-hook.js';
 
 async function postMakeApplication(req,res,next){
 
@@ -390,7 +390,6 @@ async function triggerWelcomeEmail (req, res) {
         if (!user) return res.status(401).send({ err: `user with email ${email} and plaidItemId: ${itemId} not found`});
         const name = `${user.firstName} ${user.lastName}`;
         const recipient = user.email;
-        const webHook = new WebHook();
         await webHook.sendEmail("/welcome-email", { name, recipient, applicationId, adminEmail: process.env.ADMIN_EMAIL });
         return res.status(200).send({ msg: "OK" })
     } catch (err) {
