@@ -26,10 +26,11 @@ MONGO_PASS=(password for your db)
 MONGO_BASE=(connection base url that mongodb gives, e.g: cluster0.gjssls2.mongodb.net)
 MONGO_DBNAME=(the database name the app is going to use)
 
-// For e-mail functionality
-ADMIN_EMAIL=
-ADMIN_EMAIL_PASSWORD=
+ADMIN_EMAIL=admin@avcdoloan.com
 EMAIL_SERVICES_ON=true| false #Toggle to true to allow e-mailing
+WEB_HOOK_API_TOKEN=
+PRODUCTION_WEBHOOK_BASE_URL=
+WEBHOOK_BASE_URL=http://localhost:8000
 ```
 
 I think this can be done automatically?
@@ -62,6 +63,5 @@ Where "field" is also specified by the component, so the Authentication componen
 ```
 /{component name}/action/:parameter
 ```
-
 
 

@@ -12,7 +12,6 @@ import {
     patchUserAttributesValidator,
     passwordRecoveryRequestEmailValidator,
     passwordRecoveryUpdatePasswordValidator,
-    sendSignUpEmailRequestValidator
 } from './validators.js';
 
 // schemas
@@ -23,8 +22,8 @@ import { protectedRoute } from '../../middleware/protectedRoute.js';
 import { JWTManager } from '../../services/JWTManager.js';
 import dayjs from 'dayjs';
 import { IS_PRODUCTION } from '../../services/environment.js';
-import { SignUpEmail, PasswordRecoveryEmail, PasswordChangedEmail } from '../../data/email/index.js';
-import { sendEmail } from '../../services/email-sender.js';
+import { WebHook } from '../../services/web-hook.js';
+
 
 
 const TESTING = false;
@@ -295,8 +294,9 @@ async function postRequestPasswordRecovery(req,res){
         )
         const recoveryURL = generatePasswordRecoveryURL(token);
         const userName = `${user.firstName} ${user.lastName}`
-        await sendEmail(new PasswordRecoveryEmail(user.email, userName, recoveryURL));
 
+        const webHook = new WebHook();
+        await webHook.sendEmail("/recovery-email", { recipient: user.email, name: userName, recoveryURL: recoveryURL, adminEmail: process.env.ADMIN_EMAIL })
         user.recoveryToken = recoveryToken;
         await user.save()
         return res.status(200).send({
@@ -304,9 +304,9 @@ async function postRequestPasswordRecovery(req,res){
         })
 
     } catch (err) {
-        console.log(err)
+        console.log(`${JSON.stringify(err?.response?.data?.err)}`)
         return res.status(500).json({
-            err: 'Unable to complete recovery operation'
+            err: `Unable to complete recovery operation: ${JSON.stringify(err?.response?.data?.err)}`
         })
     }
 }
@@ -392,8 +392,8 @@ async function passwordRecoveryUpdatePassword(req, res) {
         user.recoveryToken = ''
         await user.save();
 
-        // Send a notification e-mail to user that password has been updated
-        await sendEmail(new PasswordChangedEmail(user.email, `${user.firstName} ${user.lastName}`));
+        const webHook = new WebHook();
+        await webHook.sendEmail("/password-changed-notification", { recipient: user.email, adminEmail: process.env.ADMIN_EMAIL, name: `${user.firstName} ${user.lastName}`})
         return res.status(201).json({
             msg: 'ok',
             password
@@ -406,24 +406,6 @@ async function passwordRecoveryUpdatePassword(req, res) {
     }
 }
 
-async function sendSignUpEmail(req, res) {
-    const { email, itemId, pendingApplicationId } = req.body;
-    // Find the user by the e-mail and itemID and then send the welcome e-mail
-    try {
-        const user = await User.findOne({ email: email, plaidItemId: itemId }).exec();
-        if (!user) return res.status(404).send({
-            err: `User not found with e-mail ${email} and itemId: ${itemId}`
-        });
-        const name = `${user.firstName} ${user.lastName}`;
-        await sendEmail(new SignUpEmail(user.email, name, pendingApplicationId))
-        return res.status(200).send({ msg: "ok "})
-    } catch (err) {
-        console.error(err)
-        return res.status(500).json({
-            err: err,
-        })
-    }
-}
 function generatePasswordRecoveryURL (token) {
     // We need to determine the development environment.
     if (IS_PRODUCTION) {
@@ -442,7 +424,6 @@ export default function(app){
     app.post ("/auth/refresh"                    , postRefresh)
     app.post ("/auth/password-recovery/request"  , passwordRecoveryRequestEmailValidator, postRequestPasswordRecovery)
     app.post ("/auth/password-recovery/update-password", passwordRecoveryUpdatePasswordValidator, passwordRecoveryUpdatePassword)
-    app.post ("/auth/send_signup_email", sendSignUpEmailRequestValidator, sendSignUpEmail)
     app.patch("/auth/user/:id", protectedRoute   , idValidator, patchUserAttributesValidator, patchUpdateUserAttributes);
     
 
