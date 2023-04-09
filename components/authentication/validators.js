@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import validationGuard from '../../middleware/validationGuard.js'
 
 const errorMessage = "This request is not authorized. Please check with your administrator to enable this feature."
+const emailBodyValidation = body('email').exists().isEmail();
 export const userProfileValidator = [
     body('email').isEmail(),
     body('firstName').exists().trim().escape(),
@@ -33,7 +34,7 @@ export const userProfileValidator = [
 ]
 
 export const loginCredentialsValidator = [
-    body('email').exists().isEmail(),
+    emailBodyValidation,
     body('password').exists(),
     validationGuard
 ]
@@ -113,7 +114,7 @@ export const adminAuthTokenGuard = (req, res, next) => {
 }
 
 export const passwordRecoveryRequestEmailValidator = [
-    body('email').exists().isEmail(),
+    emailBodyValidation,
     validationGuard,
 ]
 
@@ -131,6 +132,22 @@ export const passwordRecoveryUpdatePasswordValidator = [
 ]
 
 export const requestVerificationCodeValidator = [
-    body('email').exists().isEmail(),
+    emailBodyValidation,
     validationGuard,
+]
+
+export const verifyEmailIsValidatedValidator = [
+    param("email").exists().isEmail(),
+    validationGuard,
+]
+
+export const verifyEmailAddressRequestValidator = [
+    body("email").exists().isEmail(),
+    body("code").exists().custom((value) => {
+        if (value.length !== 6) return false;
+        // RegExp to test that it's a six-digit number
+        const expr = /^[0-9]{6}$/;
+        return expr.test(value)
+    }),
+    validationGuard
 ]

@@ -17,6 +17,12 @@ export async function createVerificationData (email) {
 	// Verified e-mails don't need to be verified again
 	if (verificationDocument.verified === true) return null;
 
+	// Let's give this a 20 minute cooling off period so we don't send too many requests just in case	
+	if (dayjs().isBefore(dayjs(verificationDocument.created).add(20, 'minute'))) {
+		console.log(new Date().toISOString())
+		throw new Error("Verification code cool off period");
+	}
+
 	// If one already exists and is not expired, just return it
 	if (!isExpired(verificationDocument.expires)) {
 		return verificationDocument
@@ -31,9 +37,9 @@ export async function createVerificationData (email) {
  * @param {string} email 
  * @returns {Promise<boolean>}
  */
-export async function emailVerified(email) {
+export async function isEmailVerified(email) {
 	const verificationDocument = await EmailVerificationModel.findOne({ email: email }).exec();
-	return verificationDocument.verified === true;
+	return verificationDocument?.verified === true;
 }
 
 async function createNewVerificationEntry(email) {

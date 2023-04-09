@@ -12,6 +12,9 @@ import {
     patchUserAttributesValidator,
     passwordRecoveryRequestEmailValidator,
     passwordRecoveryUpdatePasswordValidator,
+    requestVerificationCodeValidator,
+    verifyEmailIsValidatedValidator,
+    verifyEmailAddressRequestValidator
 } from './validators.js';
 
 // schemas
@@ -22,7 +25,8 @@ import { protectedRoute } from '../../middleware/protectedRoute.js';
 import { JWTManager } from '../../services/JWTManager.js';
 import dayjs from 'dayjs';
 import { IS_PRODUCTION } from '../../services/environment.js';
-import { WebHook } from '../../services/web-hook.js';
+import { webHook } from '../../services/web-hook.js';
+import { createVerificationData, isEmailVerified, validateCode } from '../../services/verification-data.js';
 
 
 
@@ -250,7 +254,7 @@ function getProfile(req,res){
 function getVerify(req,res){
     /*
         DOS
-        - takes a verifcation token from the URL
+        - takes a verification token from the URL
         - looks for an account with that activation token
         - marks it as active
     */
@@ -295,7 +299,6 @@ async function postRequestPasswordRecovery(req,res){
         const recoveryURL = generatePasswordRecoveryURL(token);
         const userName = `${user.firstName} ${user.lastName}`
 
-        const webHook = new WebHook();
         await webHook.sendEmail("/recovery-email", { recipient: user.email, name: userName, recoveryURL: recoveryURL, adminEmail: process.env.ADMIN_EMAIL })
         user.recoveryToken = recoveryToken;
         await user.save()
@@ -306,7 +309,7 @@ async function postRequestPasswordRecovery(req,res){
     } catch (err) {
         console.log(`${JSON.stringify(err?.response?.data?.err)}`)
         return res.status(500).json({
-            err: `Unable to complete recovery operation: ${JSON.stringify(err?.response?.data?.err)}`
+            err: `Unable to complete recovery operation: ${err.message})}`
         })
     }
 }
@@ -392,7 +395,6 @@ async function passwordRecoveryUpdatePassword(req, res) {
         user.recoveryToken = ''
         await user.save();
 
-        const webHook = new WebHook();
         await webHook.sendEmail("/password-changed-notification", { recipient: user.email, adminEmail: process.env.ADMIN_EMAIL, name: `${user.firstName} ${user.lastName}`})
         return res.status(201).json({
             msg: 'ok',
@@ -401,7 +403,7 @@ async function passwordRecoveryUpdatePassword(req, res) {
     } catch (err) {
         console.error(err)
         return res.status(500).json({
-            err: err,
+            err: err.message,
         })
     }
 }
@@ -414,17 +416,81 @@ function generatePasswordRecoveryURL (token) {
     return `${process.env.DEV_APP_DOMAIN}/password-reset/recover?token=${token}`
 }
 
+async function triggerVerificationCodeEmail(req, res) {
+    // Do logic. Trigger verification code e-mail as necessary
+    const { email } = req.body;
+    try {
+        const emailVerifiedValue = await isEmailVerified(email);
+
+        if (emailVerifiedValue) return res.status(400).send({ err: 'E-mail address is already verified'});
+
+        const verificationData = await createVerificationData(email);
+        if (!verificationData) return res.status(400).send({
+            err: 'This is an invalid request for this e-mail'
+        });
+
+        if (!verificationData.code) {
+            throw new Error("Verification code is undefined");
+        }
+        await webHook.sendEmail("/verification-code", { recipient: email, code: verificationData.code })
+
+        return res.status(200).send({
+            msg: "OK"
+        })
+    } catch (err) {
+        console.error(err.message)
+        return res.status(500).send({
+            err: `There was an issue sending the verification code e-mail: ${err.message}`
+        })
+    }
+}
+
+async function getIsEmailVerified(req, res) {
+    // This checks if an e-mail address has a verified status
+    const { email } = req.params;
+    try {
+        const emailVerifiedValue = await isEmailVerified(email);
+        return res.status(200).send({ 
+            value: emailVerifiedValue
+        })
+    } catch (err) {
+        return res.status(500).send(
+            {
+                err: err.message
+            }
+        )
+    }
+}
+
+async function verifyEmailAddressRequest(req, res) {
+    const { code, email } = req.body;
+    // Attempt to verify the e-mail address using the code provided via the request
+    try {
+        const emailVerificationResult = await validateCode(email, code);
+        return res.status(200).send(emailVerificationResult)
+    } catch (err) {
+        return res.status(500).send(
+            {
+                err: err.message
+            }
+        )
+    }
+}
+
 export default function(app){
-    app.get  ("/auth/user/:id"                   , protectedRoute, idValidator, getUserById)
-    app.get  ("/auth/profile"                    , getProfile)
-    app.get  ("/auth/verify/:tok"                , getVerify)
-    app.post ("/auth/signup"                     , userProfileValidator     , postSignUp)
-    app.post ("/auth/admin-create"               , adminCreationGuard, adminAuthTokenGuard, adminCreationValidator, postCreateAdmin)
-    app.post ("/auth/login"                      , loginCredentialsValidator, postLogin)
-    app.post ("/auth/refresh"                    , postRefresh)
-    app.post ("/auth/password-recovery/request"  , passwordRecoveryRequestEmailValidator, postRequestPasswordRecovery)
-    app.post ("/auth/password-recovery/update-password", passwordRecoveryUpdatePasswordValidator, passwordRecoveryUpdatePassword)
-    app.patch("/auth/user/:id", protectedRoute   , idValidator, patchUserAttributesValidator, patchUpdateUserAttributes);
+    app.get  ("/auth/user/:id"                         , protectedRoute, idValidator, getUserById)
+    app.get  ("/auth/profile"                          , getProfile)
+    app.get  ("/auth/verify/:tok"                      , getVerify)
+    app.get  ("/auth/isEmailVerified/:email"           , verifyEmailIsValidatedValidator, getIsEmailVerified)
+    app.post ("/auth/signup"                           , userProfileValidator     , postSignUp)
+    app.post ("/auth/admin-create"                     , adminCreationGuard, adminAuthTokenGuard, adminCreationValidator, postCreateAdmin)
+    app.post ("/auth/login"                            , loginCredentialsValidator, postLogin)
+    app.post ("/auth/refresh"                          , postRefresh)
+    app.post ("/auth/password-recovery/request"        , passwordRecoveryRequestEmailValidator, postRequestPasswordRecovery)
+    app.post ("/auth/password-recovery/update-password", passwordRecoveryUpdatePasswordValidator, passwordRecoveryUpdatePassword);
+    app.post ("/auth/verification-code-email"          , requestVerificationCodeValidator, triggerVerificationCodeEmail)
+    app.post ("/auth/email/verify"                     , verifyEmailAddressRequestValidator, verifyEmailAddressRequest)
+    app.patch("/auth/user/:id", protectedRoute         , idValidator, patchUserAttributesValidator, patchUpdateUserAttributes);
     
 
     console.log("Authentication component registered.")
