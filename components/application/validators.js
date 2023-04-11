@@ -44,3 +44,10 @@ export const adminApplicationPatchStatusValidator = [
 export const paymentSizeValidator = [
     query("requestedLoanAmount").exists().isInt()
 ]
+
+export const triggerWelcomeEmailValidator = [
+    body("itemId").exists().isString(),
+    body("email").exists().isEmail(),
+    body("applicationId").exists().isString(),
+    validationGuard
+]

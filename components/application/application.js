@@ -2,7 +2,7 @@
 import {  protectedRoute } from '../../middleware/protectedRoute.js';
 import {  adminRoute }     from '../../middleware/adminRoute.js';
 import { ApplicationModel } from '../../schemas/application.js';
-
+import User from "../../schemas/user.js";
 import { ApplicationStatus } from '../../schemas/application-status.js';
 
 // component level validators
@@ -13,10 +13,12 @@ import {
     adminApplicationRejectValidator,
     adminApplicationPatchStatusValidator,
     paymentSizeValidator,
+    triggerWelcomeEmailValidator
 } from './validators.js';
 
 // services
-import "../../services/emailer.js"
+
+import { webHook } from '../../services/web-hook.js';
 
 async function postMakeApplication(req,res,next){
 
@@ -379,6 +381,24 @@ async function patchApplicationById(req, res, next) {
     }
 }
 
+async function triggerWelcomeEmail (req, res) {
+    // Send the welcome e-mail
+    const { itemId, email, applicationId } = req.body;
+    try {
+        // Find a user with the itemId and email
+        const user = await User.findOne({ email: email, plaidItemId: itemId }).exec();
+        if (!user) return res.status(401).send({ err: `user with email ${email} and plaidItemId: ${itemId} not found`});
+        const name = `${user.firstName} ${user.lastName}`;
+        const recipient = user.email;
+        await webHook.sendEmail("/welcome-email", { name, recipient, applicationId, adminEmail: process.env.ADMIN_EMAIL });
+        return res.status(200).send({ msg: "OK" })
+    } catch (err) {
+        return res.status(500).send({
+            err: err
+        })
+    }
+
+}
 export default function(app){
     // user procedures
     app.post("/application/apply"      , applicationValidator           ,postMakeApplication)
@@ -386,6 +406,9 @@ export default function(app){
     app.get ("/application/view/:id"   , userApplicationQueryValidator  ,getApplicationById)
     app.get ("/application/my"         , protectedRoute                 ,getApplicationsForAuthenticatedUser)
     app.patch("/application/update/:id", userApplicationQueryValidator, applicationValidator, patchApplicationById )
+
+    // Trigger welcome e-mail. This relies on info sen
+    app.post("/application/trigger-welcome-email", triggerWelcomeEmailValidator, triggerWelcomeEmail)
 
     // A route that gets the payment size via a query
     app.get("/application/payment_size", paymentSizeValidator, getPaymentSize )
@@ -396,6 +419,6 @@ export default function(app){
     app.patch("/admin/application/reject/:id" , adminApplicationQueryValidator, adminApplicationRejectValidator,  adminPatchRejectApplication )
 
     // We can use this route to handle setting the application status / message to some other state other than approve / reject
-    app.patch("/admin/application/update/:id" , adminApplicationQueryValidator, adminApplicationPatchStatusValidator,  adminPatchApplicationStatus )
+    app.patch("/admin/application/update/:id" , adminApplicationQueryValidator, adminApplicationPatchStatusValidator,  adminPatchApplicationStatus );
     console.log("Application component registered.")
 }
