@@ -25,7 +25,7 @@ import { protectedRoute } from '../../middleware/protectedRoute.js';
 import { JWTManager } from '../../services/JWTManager.js';
 import dayjs from 'dayjs';
 import { IS_PRODUCTION } from '../../services/environment.js';
-import { webHook } from '../../services/web-hook.js';
+import { emailServiceClient } from '../../services/email-service-client.js';
 import { createVerificationData, isEmailVerified, validateCode } from '../../services/verification-data.js';
 
 
@@ -299,7 +299,7 @@ async function postRequestPasswordRecovery(req,res){
         const recoveryURL = generatePasswordRecoveryURL(token);
         const userName = `${user.firstName} ${user.lastName}`
 
-        await webHook.sendEmail("/recovery-email", { recipient: user.email, name: userName, recoveryURL: recoveryURL, adminEmail: process.env.ADMIN_EMAIL })
+        await emailServiceClient.sendEmail("/recovery-email", { recipient: user.email, name: userName, recoveryURL: recoveryURL, adminEmail: process.env.ADMIN_EMAIL })
         user.recoveryToken = recoveryToken;
         await user.save()
         return res.status(200).send({
@@ -395,7 +395,7 @@ async function passwordRecoveryUpdatePassword(req, res) {
         user.recoveryToken = ''
         await user.save();
 
-        await webHook.sendEmail("/password-changed-notification", { recipient: user.email, adminEmail: process.env.ADMIN_EMAIL, name: `${user.firstName} ${user.lastName}`})
+        await emailServiceClient.sendEmail("/password-changed-notification", { recipient: user.email, adminEmail: process.env.ADMIN_EMAIL, name: `${user.firstName} ${user.lastName}`})
         return res.status(201).json({
             msg: 'ok',
             password
@@ -432,7 +432,7 @@ async function triggerVerificationCodeEmail(req, res) {
         if (!verificationData.code) {
             throw new Error("Verification code is undefined");
         }
-        await webHook.sendEmail("/verification-code", { recipient: email, code: verificationData.code })
+        await emailServiceClient.sendEmail("/verification-code", { recipient: email, code: verificationData.code })
 
         return res.status(200).send({
             msg: "OK"

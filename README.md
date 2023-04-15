@@ -28,9 +28,8 @@ MONGO_DBNAME=(the database name the app is going to use)
 
 ADMIN_EMAIL=admin@avcdoloan.com
 EMAIL_SERVICES_ON=true| false #Toggle to true to allow e-mailing
-WEB_HOOK_API_TOKEN=
-PRODUCTION_WEBHOOK_BASE_URL=
-WEBHOOK_BASE_URL=http://localhost:8000
+EMAIL_MICROSERVICE_API_TOKEN=
+EMAIL_MICROSERVICE_BASE_URL=http://localhost:8000
 ```
 
 I think this can be done automatically?
