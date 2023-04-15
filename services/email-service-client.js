@@ -2,13 +2,13 @@ import axios from "axios";
 import dotenv from 'dotenv';
 dotenv.config();
 const agent = axios.create({
-	baseURL: process.env.WEBHOOK_BASE_URL + "/hooks",
+	baseURL: process.env.EMAIL_MICROSERVICE_BASE_URL + "/hooks",
 	headers: {
-		"Authorization": `bearer ${process.env.WEB_HOOK_API_TOKEN}`
+		"Authorization": `bearer ${process.env.EMAIL_MICROSERVICE_API_TOKEN}`
 	}
 });
 
-class WebHook {
+class EmailServiceClient {
 	/**
 	 * 
 	 * @param {string} url 
@@ -20,5 +20,5 @@ class WebHook {
 	}
 }
 
-const webHook = new WebHook();
-export { webHook }
+const emailServiceClient = new EmailServiceClient();
+export { emailServiceClient }
