@@ -1,5 +1,5 @@
 
-import { JWTManager } from "./JWTManager"
+import { JWTManager } from "./jwt-manager"
 import { jest } from "@jest/globals"
 
 const OLD_ENV = process.env;

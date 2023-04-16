@@ -22,7 +22,7 @@ import User from "../../schemas/user.js"
 
 // services
 import { protectedRoute } from '../../middleware/protectedRoute.js';
-import { JWTManager } from '../../services/JWTManager.js';
+import { JWTManager } from '../../services/jwt-manager/jwt-manager.js';
 import dayjs from 'dayjs';
 import { IS_PRODUCTION } from '../../services/environment.js';
 import { emailServiceClient } from '../../services/email-service-client.js';
