@@ -1,6 +1,7 @@
 import axios from "axios";
 import dotenv from 'dotenv';
 dotenv.config();
+
 const agent = axios.create({
 	baseURL: process.env.EMAIL_MICROSERVICE_BASE_URL + "hooks",
 	headers: {

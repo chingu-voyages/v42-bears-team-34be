@@ -18,7 +18,7 @@ import {
 
 // services
 
-import { emailServiceClient } from '../../services/email-service-client.js';
+import { emailServiceClient } from '../../services/email-service-client/email-service-client.js';
 
 async function postMakeApplication(req,res,next){
 

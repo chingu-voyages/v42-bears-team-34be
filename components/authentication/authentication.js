@@ -25,8 +25,8 @@ import { protectedRoute } from '../../middleware/protectedRoute.js';
 import { JWTManager } from '../../services/jwt-manager/jwt-manager.js';
 import dayjs from 'dayjs';
 import { IS_PRODUCTION } from '../../services/environment.js';
-import { emailServiceClient } from '../../services/email-service-client.js';
-import { createVerificationData, isEmailVerified, validateCode } from '../../services/verification-data.js';
+import { emailServiceClient } from '../../services/email-service-client/email-service-client.js';
+import { createVerificationData, isEmailVerified, validateCode } from '../../services/verification-data/verification-data.js';
 
 
 

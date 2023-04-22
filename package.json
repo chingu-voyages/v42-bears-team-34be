@@ -8,7 +8,7 @@
     "build": "npx tsc",
     "serve": "NODE_ENV=development && nodemon node index.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "test-coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
   },
   "repository": {
     "type": "git",
@@ -30,6 +30,7 @@
     "express-jwt": "^8.3.0",
     "express-validator": "^6.14.2",
     "jsonwebtoken": "^9.0.0",
+    "mongodb-memory-server": "^8.12.2",
     "mongoose": "^6.8.3",
     "nodemailer": "^6.9.1",
     "plaid": "^12.2.0"

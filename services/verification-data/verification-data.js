@@ -1,4 +1,4 @@
-import { EmailVerificationModel } from "../schemas/email-verification.js";
+import { EmailVerificationModel } from "../../schemas/email-verification.js";
 import dayjs from "dayjs";
 
 /**
@@ -19,7 +19,6 @@ export async function createVerificationData (email) {
 
 	// Let's give this a 20 minute cooling off period so we don't send too many requests just in case	
 	if (dayjs().isBefore(dayjs(verificationDocument.created).add(20, 'minute'))) {
-		console.log(new Date().toISOString())
 		throw new Error("Verification code cool off period");
 	}
 
