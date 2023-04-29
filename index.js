@@ -12,14 +12,13 @@ import authentication from './components/authentication/authentication.js'
 import application    from './components/application/application.js'
 
 import plaid from "./components/plaid/plaid.js"
-import db from './services/database.js'
+
 
 const
     app = express(),
     router = express.Router()
 
 
-db.initialize()
 
 // register all our middlewares
 
@@ -89,8 +88,4 @@ app.get("/link_tester", (req,res)=>{
     res.sendFile(process.cwd()+"/linktester.html")
 })
 
-const port = process.env.LOANAPP_PORT
-app.listen(port)
-
-console.log("Listening on port "+port)
-
+export default app;
