@@ -1,37 +1,9 @@
 // Mock users created for testing
 
+import bcrypt from "bcrypt";
 import dayjs from "dayjs";
-import User from "../../../schemas/user.js"
-import bcrypt from "bcrypt"
-/**
- * 
- * @param {number} count 
- * @param {string} firstName 
- * @param {string} lastName 
- * @param {string} email 
- * @param {string} password 
- * @param {"user" | "admin"} role 
- * @returns {Promise<any[]>} Array of create mongo user documents 
- */
-export async function createMockUser(
-    count,
-    firstName,
-    lastName,
-    email,
-    password,
-    role
-    ) {
-    const dummies = [];
-    for (let i = 1; i <= count; i++) {
-        dummies.push(
-            generateUserData(i,
-                firstName, lastName, undefined, email, undefined, password, role)
-        )
-    }
-    return Promise.all((dummies.map((dummy) => {
-       return User.create(dummy)
-    })))
-}
+import User from "../../../schemas/user.js";
+
 function generateUserData(
     idx=1,
     firstName="muFirstName",
@@ -45,11 +17,42 @@ function generateUserData(
     return {
         firstName: firstName + idx,
         lastName: lastName + idx,
-        dateOfBirth: dateOfBirth,
+        dateOfBirth,
         email: `${email}${idx}@example.com`,
-        applicantGender: applicantGender,
+        applicantGender,
         dateSignedUp: dayjs().toDate(),
         hashedPassword: bcrypt.hashSync(password, 10),
-        role: role
+        role
     }
 }
+/**
+ * 
+ * @param {number} count 
+ * @param {string} firstName 
+ * @param {string} lastName 
+ * @param {string} email 
+ * @param {string} password 
+ * @param {"user" | "admin"} role 
+ * @returns {Promise<any[]>} Array of create mongo user documents 
+ */
+async function createMockUser(
+    count,
+    firstName,
+    lastName,
+    email,
+    password,
+    role
+    ) {
+    const dummies = [];
+    for (let i = 1; i <= count; i+= 1) {
+        dummies.push(
+            generateUserData(i,
+                firstName, lastName, undefined, email, undefined, password, role)
+        )
+    }
+    return Promise.all((dummies.map((dummy) => 
+        User.create(dummy)
+    )))
+}
+
+export default createMockUser;
