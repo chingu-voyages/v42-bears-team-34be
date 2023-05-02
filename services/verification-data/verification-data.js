@@ -1,5 +1,32 @@
-import { EmailVerificationModel } from "../../schemas/email-verification.js";
 import dayjs from "dayjs";
+import { EmailVerificationModel } from "../../schemas/email-verification.js";
+
+function isExpired(expiryDate) {
+	return dayjs().isAfter(dayjs(expiryDate));
+}
+/**
+ * Produces a 6-digit verification code
+ */
+function generateVerificationCode() {
+	return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function createNewVerificationEntry(email) {
+	return EmailVerificationModel.create({
+		email,
+		code: generateVerificationCode(),
+		created: new Date(),
+		expires: dayjs().add(20, 'minute').toDate()
+	})
+}
+
+function refreshRequest(doc) {
+	const document = doc;
+	document.code = generateVerificationCode();
+	document.created = new Date();
+	document.expires = dayjs().add(20, 'minute').toDate();
+	return document.save();
+}
 
 /**
  * This method handles the logic for sending the verification code e-mail
@@ -8,7 +35,7 @@ import dayjs from "dayjs";
  * @returns {Promise<{ _id: any, email: string, code: string, verified: boolean, created: Date, expires: Date, createdAt: Date, updatedAt: Date}> | Promise<null>}
  */
 export async function createVerificationData (email) {
-	const verificationDocument = await EmailVerificationModel.findOne({ email: email }).exec();
+	const verificationDocument = await EmailVerificationModel.findOne({ email }).exec();
 	if (!verificationDocument) {
 		// Create an entry
 		return createNewVerificationEntry(email)
@@ -25,10 +52,9 @@ export async function createVerificationData (email) {
 	// If one already exists and is not expired, just return it
 	if (!isExpired(verificationDocument.expires)) {
 		return verificationDocument
-	} else {
-		// If it's expired, update
-		return refreshRequest(verificationDocument);
-	}
+	} 
+	// If it's expired, update
+	return refreshRequest(verificationDocument);
 }
 
 /**
@@ -37,24 +63,8 @@ export async function createVerificationData (email) {
  * @returns {Promise<boolean>}
  */
 export async function isEmailVerified(email) {
-	const verificationDocument = await EmailVerificationModel.findOne({ email: email }).exec();
+	const verificationDocument = await EmailVerificationModel.findOne({ email }).exec();
 	return verificationDocument?.verified === true;
-}
-
-async function createNewVerificationEntry(email) {
-	return EmailVerificationModel.create({
-		email: email,
-		code: generateVerificationCode(),
-		created: new Date(),
-		expires: dayjs().add(20, 'minute').toDate()
-	})
-}
-
-/**
- * 
- */
-function generateVerificationCode() {
-	return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 /**
@@ -64,7 +74,7 @@ function generateVerificationCode() {
  * @returns {Promise<{ result: boolean, msg: string}>} if it's valid, patch and return true
  */
 export async function validateCode(email, code) {
-	const verificationDocument = await EmailVerificationModel.findOne({ email: email, code: code }).exec();
+	const verificationDocument = await EmailVerificationModel.findOne({ email, code }).exec();
 	if (!verificationDocument) return { result: false, msg: 'Invalid verification code'};
 
 	// We found something. Make sure it hasn't expired
@@ -85,16 +95,4 @@ export async function validateCode(email, code) {
 		result: true,
 		msg: null
 	}
-}
-
-function isExpired(expiryDate) {
-	return dayjs().isAfter(dayjs(expiryDate));
-}
-
-
-function refreshRequest(doc) {
-	doc.code = generateVerificationCode();
-	doc.created = new Date();
-	doc.expires = dayjs().add(20, 'minute').toDate();
-	return doc.save();
 }
