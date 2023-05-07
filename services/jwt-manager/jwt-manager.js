@@ -1,3 +1,5 @@
+/* eslint-disable no-param-reassign */
+/* eslint-disable import/prefer-default-export */
 import jsonwebtoken from "jsonwebtoken";
 
 export class JWTManager {
@@ -24,6 +26,7 @@ export class JWTManager {
 	static async verify (data) {
 		return new Promise((resolve, reject) => {
 			jsonwebtoken.verify(data, process.env.LOANAPP_JWT_SECRET, { algorithm: 'HS256'}, (err, decoded) => {
+				// eslint-disable-next-line prefer-promise-reject-errors
 				if (err) reject(`There was a problem processing the JWT: ${err}`);
 				resolve(decoded)
 			})

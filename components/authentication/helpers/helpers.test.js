@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { jest } from "@jest/globals";
 import User from "../../../schemas/user";
 import { checkIfUserExistsInDb } from "./helpers";

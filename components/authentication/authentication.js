@@ -4,18 +4,18 @@ import { v4 as uuidv4 } from 'uuid';
 // validator
 import dayjs from 'dayjs';
 import {
-  adminAuthTokenGuard,
-  adminCreationGuard,
-  adminCreationValidator,
-  idValidator,
-  loginCredentialsValidator,
-  passwordRecoveryRequestEmailValidator,
-  passwordRecoveryUpdatePasswordValidator,
-  patchUserAttributesValidator,
-  requestVerificationCodeValidator,
-  userProfileValidator,
-  verifyEmailAddressRequestValidator,
-  verifyEmailIsValidatedValidator,
+	adminAuthTokenGuard,
+	adminCreationGuard,
+	adminCreationValidator,
+	idValidator,
+	loginCredentialsValidator,
+	passwordRecoveryRequestEmailValidator,
+	passwordRecoveryUpdatePasswordValidator,
+	patchUserAttributesValidator,
+	requestVerificationCodeValidator,
+	userProfileValidator,
+	verifyEmailAddressRequestValidator,
+	verifyEmailIsValidatedValidator,
 } from './validators.js';
 
 // schemas
@@ -26,9 +26,9 @@ import { protectedRoute } from '../../middleware/protectedRoute.js';
 import { emailServiceClient } from '../../services/email-service-client/email-service-client.js';
 import { JWTManager } from '../../services/jwt-manager/jwt-manager.js';
 import {
-  createVerificationData,
-  isEmailVerified,
-  validateCode,
+	createVerificationData,
+	isEmailVerified,
+	validateCode,
 } from '../../services/verification-data/verification-data.js';
 import { checkIfUserExistsInDb, generatePasswordRecoveryURL } from './helpers/helpers.js';
 
@@ -307,7 +307,7 @@ async function postRequestPasswordRecovery(req, res) {
 			msg: 'OK',
 		});
 	} catch (err) {
-		console.log(`${JSON.stringify(err?.response?.data?.err)}`);
+		console.error(`${JSON.stringify(err?.response?.data?.err)}`);
 		return res.status(500).json({
 			err: `Unable to complete recovery operation: ${err.message})}`,
 		});
@@ -469,7 +469,7 @@ async function verifyEmailAddressRequest(req, res) {
 	}
 }
 
-export default function (app) {
+export default function Authentication (app) {
 	app.get('/auth/user/:id', protectedRoute, idValidator, getUserById);
 	app.get('/auth/profile', getProfile);
 	app.get(

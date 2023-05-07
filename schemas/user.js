@@ -46,7 +46,8 @@ const UserSchema = new mongoose.Schema({
     plaidItemId      : {type: String, index: true},
     plaidAccessToken : {type: String, index: true},
 
-    //activation: String,    // should be indexed by this, not used at the moment
+    // activation: String,    // should be indexed by this, not used at the moment
+    
     active    : Boolean,   // if this account is active or not
     recoveryToken: String,
     
