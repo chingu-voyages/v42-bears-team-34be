@@ -30,7 +30,10 @@ import {
 	isEmailVerified,
 	validateCode,
 } from '../../services/verification-data/verification-data.js';
-import { checkIfUserExistsInDb, generatePasswordRecoveryURL } from './helpers/helpers.js';
+import {
+	checkIfUserExistsInDb,
+	generatePasswordRecoveryURL,
+} from './helpers/helpers.js';
 
 // create account
 // this should schedule an "activate your account" email.
@@ -135,12 +138,10 @@ async function postLogin(req, res) {
 
 		// user can be null.
 		if (!user)
-			return res
-				.status(401)
-				.json({
-					err: 'User not found or password is incorrect.',
-					code: '$INVALID_USER_OR_PASSWORD',
-				});
+			return res.status(401).json({
+				err: 'User not found or password is incorrect.',
+				code: '$INVALID_USER_OR_PASSWORD',
+			});
 
 		// compare hashedPassword with the provided password
 		const result = await bcrypt.compare(req.body.password, user.hashedPassword);
@@ -156,12 +157,10 @@ async function postLogin(req, res) {
 		// user actually has an admin status. If they don't, throw
 		if (req.body.isAdmin === 'true') {
 			if (role !== 'admin') {
-				return res
-					.status(401)
-					.json({
-						err: 'Access is denied due to invalid access level',
-						code: '$INVALID_USER_OR_PASSWORD',
-					});
+				return res.status(401).json({
+					err: 'Access is denied due to invalid access level',
+					code: '$INVALID_USER_OR_PASSWORD',
+				});
 			}
 		}
 
@@ -403,8 +402,6 @@ async function passwordRecoveryUpdatePassword(req, res) {
 	}
 }
 
-
-
 async function triggerVerificationCodeEmail(req, res) {
 	// Do logic. Trigger verification code e-mail as necessary
 	const { email } = req.body;
@@ -469,7 +466,7 @@ async function verifyEmailAddressRequest(req, res) {
 	}
 }
 
-export default function Authentication (app) {
+export default function Authentication(app) {
 	app.get('/auth/user/:id', protectedRoute, idValidator, getUserById);
 	app.get('/auth/profile', getProfile);
 	app.get(
