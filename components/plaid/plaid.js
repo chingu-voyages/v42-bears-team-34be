@@ -1,9 +1,9 @@
 
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
-import { protectedRoute } from "../../middleware/protectedRoute.js"
-import { linkPublicTokenValidator } from '../authentication/validators.js';
-import User from '../../schemas/user.js';
 import { adminRoute } from '../../middleware/adminRoute.js';
+import { protectedRoute } from "../../middleware/protectedRoute.js";
+import User from '../../schemas/user.js';
+import { linkPublicTokenValidator } from '../authentication/validators.js';
 import { financialDetailsQueryValidator, userIdValidator } from './validators.js';
 
 // values are initialized when this component
@@ -53,7 +53,7 @@ async function getLinkToken(req,res){
   }catch(e){
     console.error(e)
     res.status(500).json({
-      err : "Something went wrong:" +e.message
+      err : `Something went wrong: ${e.message}`
     })
   }
 }
@@ -140,17 +140,17 @@ async function getFinancialDetailsFromPlaidByUserId(req,res){
   }  
 }
 
-const userNotFound = (res) => {
-  return res.status(404).json({
-    err : "User not found"
-  })
-}
+const userNotFound = (res) =>
+  res.status(404).json({
+    err: "User not found"
+  });
 
 export default function(app){
   // initialize API variables
   // this can't be done as a top level statement because
   // the environment variables may not be there by the time
   // this file is included by node
+
   plaidAPI.configuration = new Configuration({
     basePath: PlaidEnvironments[process.env.PLAID_ENV],
     baseOptions: {
