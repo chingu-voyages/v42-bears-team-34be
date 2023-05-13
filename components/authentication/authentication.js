@@ -73,12 +73,6 @@ async function postSignUp(req, res) {
       active: true, // make this one false when email integration is functional
     });
 
-    // we actually need to throw an error, this doesn't do it by itself
-    const err = newUser.validateSync();
-    if (err) {
-      throw err;
-    }
-
     await newUser.save();
     // Send a welcome e-mail to  the user
     res.status(201).json({
