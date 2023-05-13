@@ -10,6 +10,7 @@ import User from "../../schemas/user";
 import { emailServiceClient } from "../../services/email-service-client/email-service-client";
 import { JWTManager } from "../../services/jwt-manager/jwt-manager";
 import { HEADERS } from "../../services/test-helpers/headers/headers.js";
+import loginUser from "../../services/test-helpers/login-user/login-user";
 import createMockUser from "../../services/test-helpers/mock-user/create-mock-user.js";
 import * as VerificationData from "../../services/verification-data/verification-data";
 import * as Helpers from "./helpers/helpers";
@@ -50,18 +51,6 @@ async function createUserGroup () {
   const normalUsers = await createMockUser(3);
 
   return { adminUser, normalUsers }
-}
-
-/**
- * 
- * @param {{ email: string, password: string }, password: string} user 
- * @returns {Promise<string>} token
- */
-async function loginUser(user, password) {
-  const res = await request.post("/api/auth/login")
-    .set(HEADERS.formUrlEncoded)
-    .send({ email: user.email, password })
-  return res.body.tok
 }
 
 describe("Authentication route tests", () => {
@@ -266,7 +255,7 @@ describe("Authentication route tests", () => {
     describe("PATCH USER ATTRIBUTES", () => {
       test("Authenticated user can only update their own profile", async () => {
         const mockUser = await createMockUser(2);
-        const token = await loginUser(mockUser[0], "Password$123");
+        const token = await loginUser(request, mockUser[0], "Password$123");
         const req = await request.patch(`/api/auth/user/${mockUser[1]._id.toString()}`)
           .set({ ...HEADERS.formUrlEncoded, "authorization": `Bearer ${token}` })
           .send({
@@ -283,7 +272,7 @@ describe("Authentication route tests", () => {
       });
       test("Patch user success", async () => {
         const mockUser = await createMockUser(1);
-        const token = await loginUser(mockUser[0], "Password$123");
+        const token = await loginUser(request, mockUser[0], "Password$123");
         const req = await request.patch(`/api/auth/user/${mockUser[0]._id.toString()}`)
           .set({ ...HEADERS.formUrlEncoded, "authorization": `Bearer ${token}` })
           .send({
@@ -307,7 +296,7 @@ describe("Authentication route tests", () => {
     describe("GET PROFILE", () => {
       test("200 Returns", async () => {
         const user = await createMockUser(1);
-        const token = await loginUser(user[0], "Password$123");
+        const token = await loginUser(request, user[0], "Password$123");
 
         const req = await request.get("/api/auth/profile")
           .set({ 'authorization': `Bearer ${token}`})
