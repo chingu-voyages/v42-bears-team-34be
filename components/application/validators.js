@@ -1,9 +1,9 @@
-import { body , param, query}  from 'express-validator';
+import { body, param, query } from 'express-validator';
 
 // application level validators
-import {  protectedRoute } from '../../middleware/protectedRoute.js';
-import {  adminRoute }     from '../../middleware/adminRoute.js';
-import validationGuard     from '../../middleware/validationGuard.js'
+import { adminRoute } from '../../middleware/adminRoute.js';
+import { protectedRoute } from '../../middleware/protectedRoute.js';
+import validationGuard from '../../middleware/validationGuard.js';
 
 export const applicationValidator = [
     protectedRoute,
@@ -34,20 +34,25 @@ export const adminApplicationRejectValidator = [
 ]
 
 export const adminApplicationPatchStatusValidator = [
-    body("action").custom((value) => {
-        return ["mark_incomplete",
-        "mark_more_info_required", "update_reject_reason", "admin_cancel"].includes(value)
-    }),
+    body("action").custom((value) => ["mark_incomplete",
+        "mark_more_info_required", "update_reject_reason", "admin_cancel"].includes(value)),
     body("message").optional().trim().escape()
 ]
 
 export const paymentSizeValidator = [
-    query("requestedLoanAmount").exists().isInt()
+    query("requestedLoanAmount").exists().isInt(),
+    validationGuard
 ]
 
 export const triggerWelcomeEmailValidator = [
     body("itemId").exists().isString(),
     body("email").exists().isEmail(),
     body("applicationId").exists().isString(),
+    validationGuard
+]
+
+export const pageSearchQueryValidator = [
+    query("page").exists().isInt().custom((val) => val >= 0),
+    query("count").exists().isInt().custom((val) => val > 0),
     validationGuard
 ]
