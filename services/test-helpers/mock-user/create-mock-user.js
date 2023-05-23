@@ -12,7 +12,8 @@ function generateUserData(
   email = 'mockEmail',
   applicantGender = 'male',
   password = 'Password$123',
-  role = 'user'
+  role = 'user',
+  active = true
 ) {
   return {
     firstName: firstName + idx,
@@ -23,6 +24,7 @@ function generateUserData(
     dateSignedUp: dayjs().toDate(),
     hashedPassword: bcrypt.hashSync(password, 10),
     role,
+    active
   };
 }
 /**
@@ -41,7 +43,8 @@ async function createMockUser(
   lastName,
   email,
   password,
-  role
+  role,
+  active
 ) {
   const dummies = [];
   for (let i = 1; i <= count; i += 1) {
@@ -54,7 +57,8 @@ async function createMockUser(
         email,
         undefined,
         password,
-        role
+        role,
+        active
       )
     );
   }
