@@ -137,6 +137,13 @@ async function postLogin(req, res) {
         code: '$INVALID_USER_OR_PASSWORD',
       });
 
+    if (!user.active) {
+      return res.status(401).json({
+        err: 'This user is not active. Contact administrator.',
+        code: '$INACTIVE_USER',
+      });
+    }
+
     // compare hashedPassword with the provided password
     const result = await bcrypt.compare(req.body.password, user.hashedPassword);
 
