@@ -1,7 +1,7 @@
 import { body, param, query } from 'express-validator';
 
 // application level validators
-import { adminRoute } from '../../middleware/adminRoute.js';
+import adminRoute from '../../middleware/adminRoute.js';
 import { protectedRoute } from '../../middleware/protectedRoute.js';
 import validationGuard from '../../middleware/validationGuard.js';
 
@@ -40,7 +40,7 @@ export const adminApplicationPatchStatusValidator = [
 ]
 
 export const paymentSizeValidator = [
-    query("requestedLoanAmount").exists().isInt(),
+    query("requestedLoanAmount").exists().isInt().custom(val => val > 0),
     validationGuard
 ]
 
