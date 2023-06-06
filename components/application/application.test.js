@@ -1,4 +1,4 @@
-import { afterEach, beforeAll } from "@jest/globals";
+import { afterEach, beforeAll, describe } from "@jest/globals";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import supertest from "supertest";
@@ -203,10 +203,108 @@ describe("Application tests", () => {
         .set(HEADERS.formUrlEncoded)
         .send();
       expect(req.statusCode).toBe(200);
-      const data = Object.values(req.body).every((value) => !Number.isNaN(value) && value> 0);
+      const data = Object.values(req.body).every((value) => !Number.isNaN(value) && value > 0);
       const keys = Object.keys(req.body)
       expect(data).toBe(true);
-      expect(keys.every(key => key >= 2 && key <= 12 )).toBe(true)
+      expect(keys.every(key => key >= 2 && key <= 12)).toBe(true)
+    })
+  });
+  describe("CANCEL Application", () => {
+    test("200 - User cancels own application", async () => {
+      const testUser = await createMockUser(1);
+      const testApplication = await createMockApplication(testUser[0]);
+      const token = await loginUser(request, testUser[0], "Password$123");
+
+      const req = await request.post(`/api/application/cancel/${testApplication._id.toString()}`)
+        .set({ ...HEADERS.formUrlEncoded, authorization: `Bearer ${token}` })
+        .send();
+      expect(req.statusCode).toBe(200)
+
+      // Grab the application and make sure the status is updated correctly.
+      const updatedApplication = await ApplicationModel.findById(testApplication._id.toString());
+      expect(updatedApplication.status).toBe(ApplicationStatus.Cancelled)
+    })
+    test("404 - User tries to cancel application that they don't own", async () => {
+      const testUser = await createMockUser(2);
+      const testApplication = await createMockApplication(testUser[1]);
+      const token = await loginUser(request, testUser[0], "Password$123");
+      const req = await request.post(`/api/application/cancel/${testApplication._id.toString()}`)
+        .set({ ...HEADERS.formUrlEncoded, authorization: `Bearer ${token}` })
+        .send();
+    
+      expect(req.statusCode).toBe(404);
+    });
+    test("200 - admin can cancel some user's application", async () => {
+      const testUser = await createMockUser(1);
+      const testApplication = await createMockApplication(testUser[0]);
+  
+      const adminUser = await createMockUser(1, undefined, undefined, undefined, undefined, "admin");
+      const token = await loginUser(request, adminUser[0], "Password$123");
+      const req = await request.post(`/api/application/cancel/${testApplication._id.toString()}`)
+        .set({ ...HEADERS.formUrlEncoded, authorization: `Bearer ${token}` })
+        .send();
+      expect(req.statusCode).toBe(200);
+    })
+  })
+  describe("ADMIN - get all applications", () => {
+    test("401 - normal user tries to get all applications admin route", async () => {
+      const testUser = await createMockUser(4);
+      const token = await loginUser(request, testUser[0], "Password$123");
+
+      const req = await request.get('/api/admin/application/all?page=1&count=3')
+        .set({ ...HEADERS.formUrlEncoded, authorization: `Bearer ${token}` })
+        .send();
+
+      expect(req.statusCode).toBe(401);
+    });
+    test("200 - Admin can get all applications. Count route returns correct number", async () => {
+      const adminUser = await createMockUser(1, undefined, undefined, undefined, undefined, "admin");
+      const testUsers = await createMockUser(4);
+      await Promise.all(testUsers.map((testUser) => createMockApplication(testUser)))
+      const token = await loginUser(request, adminUser[0], "Password$123");
+      let req = await request.get('/api/admin/application/all?page=0&count=10')
+        .set({ ...HEADERS.formUrlEncoded, authorization: `Bearer ${token}` })
+        .send();
+      expect(req.body.applications).toBeDefined();
+      expect(req.body.applications.length).toBe(4);
+      expect(req.statusCode).toBe(200);
+
+      req = await request.get('/api/admin/application/count')
+        .set({ ...HEADERS.formUrlEncoded, authorization: `Bearer ${token}` })
+        .send();
+      expect(req.body).toBe(4);
+    })
+  });
+  describe("APPLICATION actions", () => {
+    test("401 - User tries to take an illegal action on application", async () => {
+      const testUsers = await createMockUser(1);
+      await createMockApplication(testUsers);
+
+      const token = await loginUser(request, testUsers[0], "Password$123");
+      const dummyId = mongoose.Types.ObjectId();
+      const req = await request.patch(`/api/admin/application/approve/${dummyId}`)
+        .set({ ...HEADERS.formUrlEncoded, authorization: `Bearer ${token}` })
+        .send();
+      
+      const cancelReq = await request.patch(`/api/admin/application/reject/${dummyId}`)
+        .set({ ...HEADERS.formUrlEncoded, authorization: `Bearer ${token}` })
+        .send();
+      expect(req.statusCode).toBe(401);
+      expect(cancelReq.statusCode).toBe(401)
+    });
+    test("200 - Admin user can approve an application", async () => {
+      const adminUsers = await createMockUser(1, undefined, undefined, undefined, undefined, 'admin');
+      const users = await createMockUser(1);
+
+      const mockApplication = await createMockApplication(users[0]);
+      const adminToken = await loginUser(request, adminUsers[0], "Password$123");
+
+      const req = await request.patch(`/api/admin/application/approve/${mockApplication._id.toString()}`)
+      .set({ ...HEADERS.formUrlEncoded, authorization: `Bearer ${adminToken}` })
+        .send();
+      expect(req.body.msg).toBeDefined();
+      expect(req.body.msg.includes('Approving application')).toBe(true);
+      expect(req.body.id).toBe(mockApplication._id.toString());
     })
   })
 })

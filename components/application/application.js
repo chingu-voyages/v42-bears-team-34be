@@ -1,5 +1,5 @@
 // validator
-import { adminRoute } from '../../middleware/adminRoute.js';
+import adminRoute from '../../middleware/adminRoute.js';
 import { protectedRoute } from '../../middleware/protectedRoute.js';
 import { ApplicationStatus } from '../../schemas/application-status.js';
 import { ApplicationModel } from '../../schemas/application.js';
@@ -156,9 +156,10 @@ async function postCancelApplication(req, res, next) {
 
     const application = await ApplicationModel.findOne(criteria).exec();
     if (!application) {
-      return next(
-        new Error('No pending application with that id for the current user.')
-      );
+      return res.status(404).json({
+        err: 'No pending application with that id for the current user.'
+      })
+      
     }
 
     // change status to cancelled.
