@@ -20,7 +20,7 @@ async function createNewVerificationEntry(email) {
   });
 }
 
-function refreshRequest(doc) {
+async function refreshRequest(doc) {
   const document = doc;
   document.code = generateVerificationCode();
   document.created = new Date();

@@ -5,13 +5,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const agent = axios.create({
-  baseURL: `${process.env.EMAIL_MICROSERVICE_BASE_URL}hooks`,
+  baseURL: `${process.env.EMAIL_MICROSERVICE_BASE_URL}/hooks`,
   headers: {
     Authorization: `bearer ${process.env.EMAIL_MICROSERVICE_API_TOKEN}`,
   },
 });
 
-class EmailServiceClient {
+export class EmailServiceClient {
   /**
    *
    * @param {string} url

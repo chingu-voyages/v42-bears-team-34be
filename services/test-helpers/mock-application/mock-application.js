@@ -17,7 +17,7 @@ export async function createMockApplication(user, data) {
     applicantIncome: data?.applicantIncome ?? 6000,
     loanPurpose: data?.loanPurpose ?? 'bills',
     requestedBy: user._id,
-    status: ApplicationStatus.Pending,
+    status: data?.status ?? ApplicationStatus.Incomplete,
   };
   return ApplicationModel.create(mockApplication);
 }

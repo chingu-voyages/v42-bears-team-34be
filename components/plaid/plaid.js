@@ -7,6 +7,7 @@ import {
   financialDetailsQueryValidator,
   userIdValidator,
 } from './validators.js';
+import updateAndReconcileApplications from '../application/utils/update-application/update-application.js';
 
 // values are initialized when this component
 // is associated with an express context
@@ -53,7 +54,6 @@ async function getLinkToken(req, res) {
     const createTokenResponse = await plaidAPI.client.linkTokenCreate(configs);
     res.json(createTokenResponse.data);
   } catch (e) {
-    console.error(e);
     res.status(500).json({
       err: `Something went wrong: ${e.message}`,
     });
@@ -86,6 +86,8 @@ async function postSetPublicToken(req, res) {
     user.plaidItemId = ITEM_ID;
     await user.save();
 
+    // If we have the user's financial tokens, update their application statuses
+    await updateAndReconcileApplications(user._id);
     // We can send a response at this stage with the item ID
     return res.status(201).json({
       itemId: ITEM_ID,
@@ -136,7 +138,7 @@ async function getFinancialDetailsFromPlaidByUserId(req, res) {
   } catch (e) {
     console.error(e);
     res.status(500).json({
-      err: `Something bad happened: ${e.message}`,
+      err: `Something bad happened:${  JSON.stringify(e.message)}`,
     });
   }
 }

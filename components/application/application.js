@@ -4,6 +4,7 @@ import { protectedRoute } from '../../middleware/protectedRoute.js';
 import { ApplicationStatus } from '../../schemas/application-status.js';
 import { ApplicationModel } from '../../schemas/application.js';
 import User from '../../schemas/user.js';
+import calculatePaymentSize from './utils/calculate-payment-size/calculate-payment-size.js';
 
 // component level validators
 import {
@@ -14,7 +15,7 @@ import {
   pageSearchQueryValidator,
   paymentSizeValidator,
   triggerWelcomeEmailValidator,
-  userApplicationQueryValidator
+  userApplicationQueryValidator,
 } from './validators.js';
 
 // services
@@ -24,19 +25,39 @@ import { emailServiceClient } from '../../services/email-service-client/email-se
 async function postMakeApplication(req, res, next) {
   // if multiple applications aren't allowed, we check if there's a single Application for user id where status is pending
   // does this need to be a middleware? I don't think so <- answer is no, leaving this here for historic reasons
-
+  const returnExistingApplicationResponse = () => res.status(400).json({
+      err: 'User has an application pending review.',
+      code: '$PENDING_APPLICATION_EXISTS',
+    });
   try {
     if (process.env.ALLOW_MULTIPLE_APPLICATIONS !== 'true') {
-      const application = await ApplicationModel.findOne({
+      const applications = await ApplicationModel.find({
         requestedBy: req.auth.id,
-        status: ApplicationStatus.Pending,
+        status: {
+          $in: [ApplicationStatus.Pending, ApplicationStatus.Incomplete],
+        },
       }).exec();
+      const user = await User.findById(req.auth.id);
 
-      if (application !== null) {
-        return res.status(400).json({
-          err: 'User has an application pending review.',
-          code: '$PENDING_APPLICATION_EXISTS',
-        });
+      if (user && applications.length > 0) {
+        if (
+          applications.some(
+            (app) => app.status === ApplicationStatus.Incomplete
+          )
+        ) {
+          if (user.plaidItemId && user.plaidAccessToken) {
+            // User has already authorized their financial data
+            return returnExistingApplicationResponse();
+          } 
+            return res.status(200).json({
+              msg: 'Existing incomplete application',
+              id: applications.find(
+                (app) => app.status === ApplicationStatus.Incomplete
+              ).id,
+            });
+          
+        }
+        return returnExistingApplicationResponse();
       }
     }
 
@@ -48,16 +69,8 @@ async function postMakeApplication(req, res, next) {
       applicantIncome: parseFloat(req.body.applicantIncome),
       loanPurpose: req.body.loanPurpose,
       requestedBy: req.auth.id,
-      status: ApplicationStatus.Pending,
+      status: ApplicationStatus.Incomplete,
     });
-
-    // client made an invalid request
-    const err = application.validateSync();
-    if (err) {
-      return res.status(400).json({
-        err: err.message,
-      });
-    }
 
     await application.save();
 
@@ -109,7 +122,9 @@ async function getApplicationById(req, res, next) {
 
     const a = await ApplicationModel.findOne(criteria).exec();
     if (!a) {
-      return res.status(404).send({ err: 'No such application for the current user.'});
+      return res
+        .status(404)
+        .send({ err: 'No such application for the current user.' });
     }
 
     // we don't let the user see very single detail.
@@ -157,9 +172,8 @@ async function postCancelApplication(req, res, next) {
     const application = await ApplicationModel.findOne(criteria).exec();
     if (!application) {
       return res.status(404).json({
-        err: 'No pending application with that id for the current user.'
-      })
-      
+        err: 'No pending application with that id for the current user.',
+      });
     }
 
     // change status to cancelled.
@@ -176,14 +190,14 @@ async function postCancelApplication(req, res, next) {
   }
 }
 
-async function adminGetAllApplications(req, res, next) {
+async function adminGetAllApplications(req, res) {
   try {
     const { page, count } = req.query;
-    const applications = await ApplicationModel.find({}, null, { limit: count, skip: page * count }).exec();
-    if (!applications) {
-      return next(new Error('No applications.'));
-    }
-  
+    const applications = await ApplicationModel.find({}, null, {
+      limit: count,
+      skip: page * count,
+    }).exec();
+
     const mapped = applications.map((app) => ({
       id: app._id.toString(),
       requestedLoanAmount: app.requestedLoanAmount,
@@ -198,12 +212,12 @@ async function adminGetAllApplications(req, res, next) {
       createdAt: app.createdAt,
       updatedAt: app.updatedAt,
     }));
-  
+
     res.status(200).json({
       applications: mapped,
     });
   } catch (e) {
-    return res.status(500).send({ err: e })
+    return res.status(500).send({ err: e });
   }
 }
 
@@ -213,7 +227,7 @@ async function adminGetApplicationCount(req, res) {
     const count = await ApplicationModel.count();
     return res.status(200).json(count);
   } catch (e) {
-    return res.status(500).send({ err: e })
+    return res.status(500).send({ err: e });
   }
 }
 
@@ -221,7 +235,7 @@ async function adminPatchApproveApplication(req, res, next) {
   try {
     const { id } = req.params;
 
-    const app = await ApplicationModel.findById(id).exec();
+    const app = await ApplicationModel.findById(id);
     if (!app)
       return res
         .status(404)
@@ -252,13 +266,13 @@ async function adminPatchRejectApplication(req, res, next) {
         .json({ err: `application with id ${id} not found` });
 
     app.status = ApplicationStatus.Rejected;
-    app.rejectedReason = reason ?? 'Application was rejected.';
+    app.rejectedReason = reason;
     app.evaluatedBy = req.auth.id;
 
     await app.save();
     res.status(201).json({
       msg: `Rejecting application ${id}`,
-      reason: reason || 'Application was rejected',
+      reason,
       id,
     });
   } catch (e) {
@@ -279,7 +293,7 @@ async function adminPatchApplicationStatus(req, res, next) {
     const { action, message } = req.body;
     const { id } = req.params;
     // Find the application and set the special status
-    const app = await ApplicationModel.findById(id).exec();
+    const app = await ApplicationModel.findById(id);
     if (!app)
       return res
         .status(404)
@@ -329,26 +343,6 @@ async function adminPatchApplicationStatus(req, res, next) {
   }
 }
 
-function calculatePaymentSize(presentValue) {
-  if (!presentValue) return {};
-  // This will return an object { numberOfPayments: paymentSize$ }
-  // 10% per year
-  const annualInterest = 0.1; // Store this in an env?
-
-  // in some places you'll see annualInterest/12, annualInterest ^ (1/12) is also acceptable
-  const interest = (1 + annualInterest) ** (1 / 12) - 1;
-
-  const paymentsObject = {};
-  for (let i = 2; i <= 12; i+= 1) {
-    const paymentSize =
-      (presentValue * ((1 + interest) ** i * interest)) /
-      ((1 + interest) ** i - 1);
-    // round it off
-    paymentsObject[i] = parseFloat(paymentSize.toFixed(2));
-  }
-  return paymentsObject;
-}
-
 async function patchApplicationById(req, res, next) {
   const { id } = req.params;
   const {
@@ -362,7 +356,7 @@ async function patchApplicationById(req, res, next) {
 
   try {
     // Find the application and make sure that the requestedBy matches
-    const app = await ApplicationModel.findById(id).exec();
+    const app = await ApplicationModel.findById(id);
     if (!app)
       return res.status(404).json({ err: `Cannot find application ${id}` });
 
@@ -398,11 +392,9 @@ async function triggerWelcomeEmail(req, res) {
     // Find a user with the itemId and email
     const user = await User.findOne({ email, plaidItemId: itemId }).exec();
     if (!user)
-      return res
-        .status(401)
-        .send({
-          err: `user with email ${email} and plaidItemId: ${itemId} not found`,
-        });
+      return res.status(404).send({
+        err: `user with email ${email} and plaidItemId: ${itemId} not found`,
+      });
     const name = `${user.firstName} ${user.lastName}`;
     const recipient = user.email;
     await emailServiceClient.sendEmail('/welcome-email', {
@@ -418,6 +410,7 @@ async function triggerWelcomeEmail(req, res) {
     });
   }
 }
+
 export default function (app) {
   // user procedures
   app.post('/application/apply', applicationValidator, postMakeApplication);
@@ -454,7 +447,12 @@ export default function (app) {
   app.get('/application/payment_size', paymentSizeValidator, getPaymentSize);
 
   // administrative procedures
-  app.get('/admin/application/all', adminRoute, pageSearchQueryValidator, adminGetAllApplications);
+  app.get(
+    '/admin/application/all',
+    adminRoute,
+    pageSearchQueryValidator,
+    adminGetAllApplications
+  );
   app.get('/admin/application/count', adminRoute, adminGetApplicationCount);
   app.patch(
     '/admin/application/approve/:id',
