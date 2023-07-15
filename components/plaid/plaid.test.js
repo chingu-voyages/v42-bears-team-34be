@@ -221,7 +221,6 @@ describe('PLAID tests', () => {
         })
         .send();
 
-      // Since the access_token has not been set on testUser, this should return 400
       expect(req.statusCode).toBe(200);
       expect(financialRequestSpy).toHaveBeenCalled();
     });
@@ -256,8 +255,6 @@ describe('PLAID tests', () => {
           authorization: `Bearer ${testAdminToken}`,
         })
         .send();
-
-      // Since the access_token has not been set on testUser, this should return 400
       expect(req.statusCode).toBe(500);
     });
   });
