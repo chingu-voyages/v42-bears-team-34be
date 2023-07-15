@@ -38,8 +38,8 @@ beforeEach(() => {
 describe('PLAID tests', () => {
   describe('GET Link token', () => {
     test('200 - Link token created', async () => {
-      const testUser = await createMockUser(1);
-      const token = await loginUser(request, testUser[0], 'Password$123');
+      const [testUser] = await createMockUser(1);
+      const token = await loginUser(request, testUser, 'Password$123');
       const plaidInstanceSpy = jest
         .spyOn(PlaidMock.PlaidApi.prototype, 'linkTokenCreate')
         .mockImplementation(() =>
@@ -60,8 +60,8 @@ describe('PLAID tests', () => {
       expect(req.statusCode).toBe(200);
     });
     test('500 error response', async () => {
-      const testUser = await createMockUser(1);
-      const token = await loginUser(request, testUser[0], 'Password$123');
+      const [testUser] = await createMockUser(1);
+      const token = await loginUser(request, testUser, 'Password$123');
       const plaidInstanceSpy = jest
         .spyOn(PlaidMock.PlaidApi.prototype, 'linkTokenCreate')
         .mockImplementation(() => Promise.reject(new Error('Server Error')));
@@ -76,8 +76,8 @@ describe('PLAID tests', () => {
   });
   describe('Set Public Token', () => {
     test('Testing the public token', async () => {
-      const testUser = await createMockUser(1);
-      const token = await loginUser(request, testUser[0], 'Password$123');
+      const [testUser] = await createMockUser(1);
+      const token = await loginUser(request, testUser, 'Password$123');
 
       // Mock the itemPublicToken
       const itemPublicTokenSpy = jest
@@ -108,14 +108,14 @@ describe('PLAID tests', () => {
       expect(req.statusCode).toBe(201);
       expect(itemPublicTokenSpy).toHaveBeenCalled();
 
-      const refreshedUser = await User.findById(testUser[0]._id.toString());
+      const refreshedUser = await User.findById(testUser._id.toString());
       // Test that the user document is updated properly
       expect(refreshedUser.plaidAccessToken).toBe('dummyToken');
       expect(refreshedUser.plaidItemId).toBe('dummyItemId');
     });
     test('500 error response', async () => {
-      const testUser = await createMockUser(1);
-      const token = await loginUser(request, testUser[0], 'Password$123');
+      const [testUser] = await createMockUser(1);
+      const token = await loginUser(request, testUser, 'Password$123');
 
       // Mock the itemPublicToken
       jest
@@ -132,7 +132,7 @@ describe('PLAID tests', () => {
   describe('Get financial details by userId', () => {
     test('404 - Admin tries to get financial data for user who does not exist', async () => {
       // Create a dummy user and admin
-      const testAdmin = await createMockUser(
+      const [testAdmin] = await createMockUser(
         1,
         undefined,
         undefined,
@@ -144,7 +144,7 @@ describe('PLAID tests', () => {
       // Log both users in
       const testAdminToken = await loginUser(
         request,
-        testAdmin[0],
+        testAdmin,
         'Password$123'
       );
 
@@ -161,8 +161,8 @@ describe('PLAID tests', () => {
       expect(req.statusCode).toBe(404);
     });
     test('400 - Access token is not found on target user', async () => {
-      const testUser = await createMockUser(1);
-      const testAdmin = await createMockUser(
+      const [testUser] = await createMockUser(1);
+      const [testAdmin] = await createMockUser(
         1,
         undefined,
         undefined,
@@ -172,13 +172,13 @@ describe('PLAID tests', () => {
       );
       const testAdminToken = await loginUser(
         request,
-        testAdmin[0],
+        testAdmin,
         'Password$123'
       );
 
       const req = await request
         .get(
-          `/api/plaid/financial_details/${testUser[0]._id.toString()}?category=balance`
+          `/api/plaid/financial_details/${testUser._id.toString()}?category=balance`
         )
         .set({
           ...HEADERS.formUrlEncoded,
@@ -190,8 +190,8 @@ describe('PLAID tests', () => {
       expect(req.statusCode).toBe(400);
     });
     test('200 Response', async () => {
-      const testUser = await createMockUser(1);
-      const testAdmin = await createMockUser(
+      const [testUser] = await createMockUser(1);
+      const [testAdmin] = await createMockUser(
         1,
         undefined,
         undefined,
@@ -201,7 +201,7 @@ describe('PLAID tests', () => {
       );
       const testAdminToken = await loginUser(
         request,
-        testAdmin[0],
+        testAdmin,
         'Password$123'
       );
 
@@ -209,11 +209,11 @@ describe('PLAID tests', () => {
         .spyOn(PlaidMock.PlaidApi.prototype, 'liabilitiesGet')
         .mockImplementation(() => Promise.resolve({ data: 'mockData' }));
       // Add a token to the user
-      testUser[0].plaidAccessToken = 'dummyToken';
-      await testUser[0].save();
+      testUser.plaidAccessToken = 'dummyToken';
+      await testUser.save();
       const req = await request
         .get(
-          `/api/plaid/financial_details/${testUser[0]._id.toString()}?category=balance`
+          `/api/plaid/financial_details/${testUser._id.toString()}?category=balance`
         )
         .set({
           ...HEADERS.formUrlEncoded,
@@ -225,8 +225,8 @@ describe('PLAID tests', () => {
       expect(financialRequestSpy).toHaveBeenCalled();
     });
     test('500 response', async () => {
-      const testUser = await createMockUser(1);
-      const testAdmin = await createMockUser(
+      const [testUser] = await createMockUser(1);
+      const [testAdmin] = await createMockUser(
         1,
         undefined,
         undefined,
@@ -236,7 +236,7 @@ describe('PLAID tests', () => {
       );
       const testAdminToken = await loginUser(
         request,
-        testAdmin[0],
+        testAdmin,
         'Password$123'
       );
 
@@ -244,11 +244,11 @@ describe('PLAID tests', () => {
         .spyOn(PlaidMock.PlaidApi.prototype, 'liabilitiesGet')
         .mockImplementation(() => Promise.reject(new Error('Error')));
       // Add a token to the user
-      testUser[0].plaidAccessToken = 'dummyToken';
-      await testUser[0].save();
+      testUser.plaidAccessToken = 'dummyToken';
+      await testUser.save();
       const req = await request
         .get(
-          `/api/plaid/financial_details/${testUser[0]._id.toString()}?category=balance`
+          `/api/plaid/financial_details/${testUser._id.toString()}?category=balance`
         )
         .set({
           ...HEADERS.formUrlEncoded,
