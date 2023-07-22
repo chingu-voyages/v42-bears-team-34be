@@ -1,25 +1,23 @@
 import dotenv from 'dotenv'
-// environment variables must be set before connection with db is established
-dotenv.config()
 
-import express from 'express'
 import cors from 'cors'
-import { urlencoded } from 'express'
+import express, { urlencoded } from 'express'
 import { expressjwt } from 'express-jwt'
 
 // import our components
+import application from './components/application/application.js'
 import authentication from './components/authentication/authentication.js'
-import application    from './components/application/application.js'
 
 import plaid from "./components/plaid/plaid.js"
-import db from './services/database.js'
+// environment variables must be set before connection with db is established
+dotenv.config()
+
 
 const
-    app = express(),
-    router = express.Router()
+    app = express();
+    const router = express.Router()
 
 
-db.initialize()
 
 // register all our middlewares
 
@@ -84,13 +82,9 @@ app.use( (err,req,res, next) =>{
             })
     }
 })
- 
+
 app.get("/link_tester", (req,res)=>{
-    res.sendFile(process.cwd()+"/linktester.html")
+    res.sendFile(`${process.cwd()}/linktester.html`)
 })
 
-const port = process.env.LOANAPP_PORT
-app.listen(port)
-
-console.log("Listening on port "+port)
-
+export default app;
