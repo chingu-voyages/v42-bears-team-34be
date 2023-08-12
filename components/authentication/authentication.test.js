@@ -1,3 +1,4 @@
+import { describe, jest, test } from '@jest/globals';
 import dayjs from 'dayjs';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
@@ -98,19 +99,31 @@ describe('Authentication route tests', () => {
       expect(res.statusCode).toBe(401);
       expect(res.body.code).toBe('$INACTIVE_USER');
     });
-    describe('VALID LOGIN REQUEST', () => {
-      test('200 - Valid login request', async () => {
-        const mockEmail = 'mock1@example.com';
-        const mockPassword = 'mockPassword$1';
+    test('200 - Valid login request', async () => {
+      const mockEmail = 'mock1@example.com';
+      const mockPassword = 'mockPassword$1';
 
-        await createMockUser(1, null, null, 'mock', mockPassword);
-        const res = await request
-          .post('/api/auth/login')
-          .set(HEADERS.formUrlEncoded)
-          .send({ email: mockEmail, password: mockPassword });
-        expect(res.statusCode).toBe(200);
-        expect(res.body.tok).toBeDefined();
-      });
+      await createMockUser(1, null, null, 'mock', mockPassword);
+      const res = await request
+        .post('/api/auth/login')
+        .set(HEADERS.formUrlEncoded)
+        .send({ email: mockEmail, password: mockPassword });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.tok).toBeDefined();
+    });
+    test('500 - Server error logging in', async () => {
+      const mockEmail = 'mock1@example.com';
+      const mockPassword = 'mockPassword$1';
+
+      await createMockUser(1, null, null, 'mock', mockPassword);
+      jest
+        .spyOn(User, 'findOne')
+        .mockImplementation(() => new Error('fakeError'));
+      const res = await request
+        .post('/api/auth/login')
+        .set(HEADERS.formUrlEncoded)
+        .send({ email: mockEmail, password: mockPassword });
+      expect(res.statusCode).toBe(500);
     });
   });
   describe('ADMIN', () => {
@@ -151,6 +164,25 @@ describe('Authentication route tests', () => {
             password: 'Password$123',
           });
         expect(res.statusCode).toBe(401);
+      });
+      test('500 - server error', async () => {
+        jest
+          .spyOn(User.prototype, 'save')
+          .mockImplementation(() => Promise.reject(new Error('mockError')));
+        const res = await request
+          .post('/api/auth/admin-create')
+          .set({
+            ...HEADERS.formUrlEncoded,
+            'x-api-key': process.env.ADMIN_TOKEN,
+          })
+          .send({
+            email: 'admin@example.com',
+            firstName: 'fnadmin',
+            lastName: 'lnadmin',
+            applicantGender: 'female',
+            password: 'Password$123',
+          });
+        expect(res.statusCode).toBe(500);
       });
     });
   });
@@ -197,6 +229,16 @@ describe('Authentication route tests', () => {
 
       expect(res.statusCode).toBe(201);
       expect(res.body.msg).toBeDefined();
+    });
+    test('500 - Server error during sign-up', async () => {
+      jest
+        .spyOn(User, 'findOne')
+        .mockImplementation(() => Promise.reject(new Error('fake error')));
+      const res = await request
+        .post('/api/auth/signup')
+        .set(HEADERS.formUrlEncoded)
+        .send(mockUser);
+      expect(res.statusCode).toBe(500);
     });
   });
 
